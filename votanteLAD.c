@@ -1,20 +1,19 @@
 /*************************************************************************
 *                     Votante Latoski-Arenzon-Dantas                     *
-*                             V1.02 30/04/2021                           *
+*                             V1.02 03/05/2021                           *
 *************************************************************************/
 
-// -I ~/VotanteLAD/liblat2eps/ -llat2eps -DSNAPSHOTS [snapshots of the system]
 // -DNBINARY [non binary case]
 // -DRESET  [full reset case]
 // -DGRESET [gamma reset case]
-// -DDEBUG [debug program]
 // -DINTRANS [intrans case]
+// -DINCA [inc 1e-1], -DINCB [inc 1e-2], -DINCC [inc 1e-3], -DINCD [inc 1e-4], -DINCE [inc 1e-5]
+// -DCLUSTER [swap to cluster measures]
+
 // -DSPEEDTEST [speed test]
-// -DINCA [inc 1e-1]
-// -DINCB [inc 1e-2]
-// -DINCC [inc 1e-3]
-// -DINCD [inc 1e-4]
-// -DINCE [inc 1e-5]
+// -DDEBUG [debug program]
+// -DVISUAL [live gif of the evolution]
+// -DSNAPSHOTS -I ~/VotanteLAD/liblat2eps/ -llat2eps [snapshots of the system]
 
 /***************************************************************
  *                            INCLUDES                      
@@ -41,7 +40,7 @@
 #define MCS         1000000 //MCS para as medidas
 #define THRESHOLD   1. //Conviccao maxima
 #define MEASURES    40
-#define SAMPLES     1000
+#define SAMPLES     1
 #define ALPHA       1.  //Probabilidade de Transiçã (pode depender da convicção eventualmente)
 #define BETA        1.
 #define SEED        1616583043   //Debug purposes
@@ -280,8 +279,6 @@ void sweep(void) {
     int sitio = FRANDOM*N;
     int dir = FRANDOM*4;
     int vizinho = viz[sitio][dir];
-    printf("\n\nspin[site]:%d spin[viz]:%d\n",spin[sitio],spin[vizinho]);
-    printf("c[site]:%.2f c[viz]:%.2f\n",certainty[sitio],certainty[vizinho]);
     #if(SIMPLIFIED==1)
       if(spin[sitio]!=spin[vizinho]) {
         if(zealot[sitio] == 0){
@@ -294,7 +291,6 @@ void sweep(void) {
             spin[sitio] = spin[vizinho];
             memory[spin[sitio]]++;
           #endif
-        printf("spin flip!\n");
         }
         certainty[vizinho] += INCREMENTO;
 
@@ -307,14 +303,12 @@ void sweep(void) {
         #if(RESET==0)
           certainty[sitio] -= INCREMENTO;
         #endif     
-        printf("reduz certeza do sitio!\n");
+
         #if(INTRANS==0)
           if(certainty[sitio]<=THRESHOLD)zealot[sitio]=0;
         #endif
 
         if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
-        printf("spin[site]:%d spin[viz]:%d\n",spin[sitio],spin[vizinho]);
-        printf("c[site]:%.2f c[viz]:%.2f\n\n\n",certainty[sitio],certainty[vizinho]);
         continue;
       }
       else{
@@ -322,9 +316,6 @@ void sweep(void) {
         certainty[vizinho] += INCREMENTO;
         if(certainty[sitio]>=THRESHOLD)zealot[sitio]=1;
         if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
-        printf("sem flip, certeza aumentada!\n");
-        printf("spin[site]:%d spin[viz]:%d\n",spin[sitio],spin[vizinho]);
-        printf("c[site]:%.2f c[viz]:%.2f\n\n\n",certainty[sitio],certainty[vizinho]);
         continue;
       }
       
