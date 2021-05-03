@@ -35,7 +35,7 @@
  *                       PARAMETERS DEFINITIONS                      
  ***************************************************************/
 
-#define L           128   //Lado da Rede
+#define L           64   //Lado da Rede
 #define N          (L*L)  //Número de Sítios
 #define MCS         1000000 //MCS para as medidas
 #define THRESHOLD   1. //Conviccao maxima
@@ -65,9 +65,6 @@
  *                            SETTINGS 
  ***************************************************************/
 
-#ifdef INTRANS
-  #define INTRANS     1 // 0 --> reversible, 1 --> irreversible
-#endif
 #ifdef NBINARY
   #define BINARY      0 // 0 --> m(0)=2 ,        
 #else
@@ -79,37 +76,28 @@
 #ifdef GRESET
   #define RESET       2
 #endif
-#ifdef DEBUG
-  #define DEBUG       1 // 1 --> fixed seed
-#endif
-#ifdef VISUAL
-  #define VISUAL      1 // 1 --> run with ./a.out | gnuplot for gifs
-#endif
 #ifdef SPEEDTEST
   #define SPEED_TEST  1 // 1 --> mcs speed test
 #endif
-#ifdef SNAPSHOTS
-  #define SNAPSHOTS   1 // 1 --> ignore other measures and simply take snapshots of the system       
-#endif
-#define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale
-#define SIMPLIFIED  1
+#define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
+#define SIMPLIFIED  1 // 1 --> simplify the system algorithm to alpha=beta=1.
 
 /***************************************************************
  *                            FUNCTIONS                       
  **************************************************************/
 
-void inicializacao(void); //Inicia a rede
-void openfiles(void); //Abre arquivos de saida (ainda não utilizo)
-void sweep(void); //Evolui
-void vizualizacao(void); //Habilita vizualizacao
+void inicializacao(void); 
+void openfiles(void); 
+void sweep(void); 
+void vizualizacao(void); 
 void somas(void);
-void states(void); //Vê o numero de estados difereentes no sistema
-void measures1(void); //Cria vetor de medidas
+void states(void); 
+void measures1(void); 
 void measures2(void);
 #ifdef SNAPSHOTS
   void snap(void);  
 #endif
-#if(CLUSTER==1)
+#ifdef CLUSTER
   void hoshen_kopelman(void);
   void connections(int,int);
   int percolates2d(int);
@@ -123,7 +111,7 @@ bool teste(double);
 
 FILE *fp1,*fp2;
 int *spin,**viz,soma,*memory,*measures,*zealot,*right,*left,*up, *down, soma, somaz, conexoes;
-#if(CLUSTER==1)
+#ifdef CLUSTER
   int *siz, *label, *his0, *his0_perc, cl1, numc, mx1, mx2, aga;
   int probperc0,probperc1;
 #endif
@@ -472,9 +460,38 @@ void measures2(void){
 }
 
 /**************************************************************
+ *                      Teste
+ *************************************************************/
+
+bool teste(double _ALPHA) {
+  double r = FRANDOM;
+  if(r<=_ALPHA)return true;
+  else return false;
+}
+
+/**************************************************************
  *                       Vizualização                   
  *************************************************************/
+void vizualizacao(void) {
+  int l;
+  printf("pl '-' matrix w image\n");
+  for(l = N-1; l >= 0; l--) {
+    #if(BINARY==1)
+      if(zealot[l]==1)printf("%d ", spin[l]+1);
+      else printf("%d ", spin[l]);
+    #else
+      if(zealot[l]==1)printf("%d ", -spin[l]);
+      else printf("%d ", spin[l]);
+    #endif
+    if( l%L == 0 ) printf("\n");
+  }
+  printf("e\n");
+}
+
 #ifdef SNAPSHOTS
+/**************************************************************
+ *                       Snapshots                   
+ *************************************************************/
   void snap(void) {
     int l;
     int identifier = 0;
@@ -510,49 +527,9 @@ void measures2(void){
     lat2eps_release();
   }
 #endif
-/**************************************************************
- *                       Vizualização                   
- *************************************************************/
-void vizualizacao(void) {
-  int l;
-  printf("pl '-' matrix w image\n");
-  for(l = N-1; l >= 0; l--) {
-    #if(BINARY==1)
-      if(zealot[l]==1)printf("%d ", spin[l]+1);
-      else printf("%d ", spin[l]);
-    #else
-      if(zealot[l]==1)printf("%d ", -spin[l]);
-      else printf("%d ", spin[l]);
-    #endif
-    if( l%L == 0 ) printf("\n");
-  }
-  printf("e\n");
-}
 
-/**************************************************************
- *                      Teste
- *************************************************************/
-
- bool teste(double _ALPHA) {
-    double r = FRANDOM;
-    if(r<=_ALPHA)return true;
-    else return false;
- }
-
-/**************************************************************
- *               Check for duplicate file                  
- *************************************************************/
-
-bool exists(const char *fname){
-    if( access( fname, F_OK ) == 0 ) {
-        return true;
-    } else {
-        return false;
-    }
-}
 
 #if(CLUSTER==1)
-
 /**************************************************************
  *                    Cluster measures                   
  *************************************************************/
@@ -675,13 +652,24 @@ if (label[i1] > label[j1]) label[i1] = label[j1];
                   else label[j1] = label[i1];
 return;
 }
-
 #endif
 
+/**************************************************************
+ *               Check for duplicate file                  
+ *************************************************************/
+
+bool exists(const char *fname){
+    if( access( fname, F_OK ) == 0 ) {
+        return true;
+    } else {
+        return false;
+    }
+}
 
 /**************************************************************
  *               Open output files routine                   
  *************************************************************/
+
 void openfiles(void) {
   char output_file1[100];
   char teste[100];
