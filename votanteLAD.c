@@ -6,7 +6,7 @@
 /***************************************************************
  *                    OBRIGATORY DEFINITIONS
  **************************************************************/
-// -D L="TAMANHO_DA_REDE"
+// -D L="LATTICE_SIZE"
 // -D DETA="TAMANHO_DO_DETA"
 
 /***************************************************************
@@ -622,7 +622,7 @@ int percolates2d(int site) {
 void connections(int i,int j) {
 
   unsigned long i1,j1;
-  
+
   i1 = label[i];                            /* check where i points to          */
   while (label[i1] != i1)i1 = label[i1];    /* while it doesn't point to itself */
 
