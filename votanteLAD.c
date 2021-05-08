@@ -1,13 +1,16 @@
 /*************************************************************************
 *                     Votante Latoski-Arenzon-Dantas                     *
-*                             V1.02 03/05/2021                           *
+*                             V1.03 08/05/2021                           *
 *************************************************************************/
+
+/**MANDATORY**/
+// -D L="TAMANHO_DA_REDE"
+// -D INCREMENTO="TAMANHO_DO_INCREMENTO"
 
 // -DNBINARY [non binary case]
 // -DRESET  [full reset case]
 // -DGRESET [gamma reset case]
 // -DINTRANS [intrans case]
-// -DINCA [inc 1e-1], -DINCB [inc 1e-2], -DINCC [inc 1e-3], -DINCD [inc 1e-4], -DINCE [inc 1e-5]
 // -DCLUSTER [swap to cluster measures]
 
 // -DSPEEDTEST [speed test]
@@ -27,7 +30,7 @@
 #include <stdbool.h>
 #include <unistd.h>
 #ifdef SNAPSHOTS
-#include <lat2eps.h>
+  #include <lat2eps.h>
 #endif
 #include "mc.h"
 
@@ -35,30 +38,13 @@
  *                       PARAMETERS DEFINITIONS                      
  ***************************************************************/
 
-#define L           64   //Lado da Rede
 #define N          (L*L)  //Número de Sítios
 #define MCS         1000000 //MCS para as medidas
 #define THRESHOLD   1. //Conviccao maxima
 #define MEASURES    40
-#define SAMPLES     1
+
 #define ALPHA       1.  //Probabilidade de Transiçã (pode depender da convicção eventualmente)
 #define BETA        1.
-#define SEED        1616583043   //Debug purposes
-#ifdef INCA
-  #define INCREMENTO  0.1
-#endif
-#ifdef INCB
-  #define INCREMENTO  0.01
-#endif
-#ifdef INCC
-  #define INCREMENTO  0.001
-#endif
-#ifdef INCD
-  #define INCREMENTO  0.0001
-#endif
-#ifdef INCE
-  #define INCREMENTO  0.00001
-#endif
 #define GAMMA       2.
 
 /****************************************************************
@@ -89,7 +75,7 @@
 void inicializacao(void); 
 void openfiles(void); 
 void sweep(void); 
-void vizualizacao(void); 
+void vizualizacao(int,unsigned long); 
 void somas(void);
 void states(void); 
 void measures1(void); 
@@ -123,19 +109,26 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  for (int S=0; S<SAMPLES; S++) {   
-    int i,j,k=0;
-    seed = time(0);
-    
-    #if(SNAPSHOTS==0)
-      openfiles();
-    #endif
-    
-    inicializacao();
-    
-    for (j=0;j<=MCS+1;j++)  {
-      if (measures[k]==j) {  
+  int i,j,k=0;
 
+  #if(SEED==0)
+    seed = time(0);
+  #else
+    seed = SEED;
+  #endif
+  
+  #if(SNAPSHOTS==0 && VISUAL==0)
+    openfiles(); 
+  #endif
+
+  inicializacao();
+
+  for (j=0;j<=MCS+1;j++)  {
+    #if(VISUAL==1)
+      vizualizacao(j,seed);
+      sweep();
+    #else
+      if (measures[k]==j) {  
         #if(SNAPSHOTS==1)
           snap();   
           k++;        
@@ -172,7 +165,6 @@ int main(void){
             printf("one measure: %fs\n",time_taken);
           #endif
         #endif
-
       }
 
       #if(SPEED_TEST==1)
@@ -184,18 +176,12 @@ int main(void){
       #else
         sweep();
       #endif
-
-      #if(VISUAL==1 )
-        vizualizacao();
-      #endif
-
-    }
-
-    #if(SNAPSHOTS==0)
-    fclose(fp1);
     #endif
-  
   }
+
+  #if(SNAPSHOTS==0)
+  fclose(fp1);
+  #endif
 
 }
 /***************************************************************
@@ -472,9 +458,9 @@ bool teste(double _ALPHA) {
 /**************************************************************
  *                       Vizualização                   
  *************************************************************/
-void vizualizacao(void) {
+void vizualizacao(int _j,unsigned long _seed) {
   int l;
-  printf("pl '-' matrix w image\n");
+  printf("pl '-' matrix w image t 'time = %d seed = %ld'\n",_j,_seed);
   for(l = N-1; l >= 0; l--) {
     #if(BINARY==1)
       if(zealot[l]==1)printf("%d ", spin[l]+1);
@@ -688,7 +674,7 @@ void openfiles(void) {
         }
 
         #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
         #else
           seed=identifier;
         #endif
@@ -709,7 +695,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
           #else
           seed=identifier;
           #endif
@@ -728,7 +714,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
           #else
           seed=identifier;
           #endif
@@ -753,7 +739,7 @@ void openfiles(void) {
         }
 
         #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
         #else
           seed=identifier;
         #endif
@@ -774,7 +760,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-            seed=SEED;
+            seed=1111111111;
           #else
             seed=identifier;
           #endif
@@ -793,7 +779,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-            seed=SEED;
+            seed=1111111111;
           #else
             seed=identifier;
           #endif
@@ -822,7 +808,7 @@ void openfiles(void) {
         }
 
         #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
         #else
           seed=identifier;
         #endif
@@ -843,7 +829,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
           #else
           seed=identifier;
           #endif
@@ -862,7 +848,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
           #else
           seed=identifier;
           #endif
@@ -887,7 +873,7 @@ void openfiles(void) {
         }
 
         #if(DEBUG==1)
-          seed=SEED;
+          seed=1111111111;
         #else
           seed=identifier;
         #endif
@@ -907,7 +893,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-            seed=SEED;
+            seed=1111111111;
           #else
             seed=identifier;
           #endif
@@ -926,7 +912,7 @@ void openfiles(void) {
           }
 
           #if(DEBUG==1)
-            seed=SEED;
+            seed=1111111111;
           #else
             seed=identifier;
           #endif
