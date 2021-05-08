@@ -7,7 +7,7 @@
  *                    OBRIGATORY DEFINITIONS
  **************************************************************/
 // -D L="LATTICE_SIZE"
-// -D DETA="TAMANHO_DO_DETA"
+// -D DETA="ETA_INCREMENT"
 
 /***************************************************************
  *                     OPTIONAL DEFINITIONS
