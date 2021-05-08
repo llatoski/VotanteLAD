@@ -1,19 +1,24 @@
 /*************************************************************************
-*                     Votante Latoski-Arenzon-Dantas                     *
+*                     Votante Latoski-Arenzon-Dantas 2D                  *
 *                             V1.03 08/05/2021                           *
 *************************************************************************/
 
-/**MANDATORY**/
+/***************************************************************
+ *                    OBRIGATORY DEFINITIONS
+ **************************************************************/
 // -D L="TAMANHO_DA_REDE"
-// -D INCREMENTO="TAMANHO_DO_INCREMENTO"
+// -D DETA="TAMANHO_DO_DETA"
 
+/***************************************************************
+ *                     OPTIONAL DEFINITIONS
+ **************************************************************/
 // -DNBINARY [non binary case]
 // -DRESET  [full reset case]
 // -DGRESET [gamma reset case]
 // -DINTRANS [intrans case]
 // -DCLUSTER [swap to cluster measures]
 
-// -DSPEEDTEST [speed test]
+// -DSPEEDTEST [sweep and measure speed test]
 // -DDEBUG [debug program]
 // -DVISUAL [live gif of the evolution]
 // -DSNAPSHOTS -I ~/VotanteLAD/liblat2eps/ -llat2eps [snapshots of the system]
@@ -38,45 +43,37 @@
  *                       PARAMETERS DEFINITIONS                      
  ***************************************************************/
 
-#define N          (L*L)  //Número de Sítios
-#define MCS         1000000 //MCS para as medidas
-#define THRESHOLD   1. //Conviccao maxima
+#define N          (L*L)  //Lattice volume
+#define MCS         1000000 //Max evolution time
+#define THRESHOLD   1. //Certainty's treshold
 #define MEASURES    40
 
-#define ALPHA       1.  //Probabilidade de Transiçã (pode depender da convicção eventualmente)
-#define BETA        1.
-#define GAMMA       2.
+#define ALPHA       1.  //Transiten probability 1
+#define BETA        1.  //Transiten probability 2
+#define GAMMA       2.  //Gamma reset scale
 
 /****************************************************************
  *                            SETTINGS 
  ***************************************************************/
 
-#ifdef NBINARY
-  #define BINARY      0 // 0 --> m(0)=2 ,        
-#else
-  #define BINARY      1
-#endif
 #ifdef RESET
-  #define RESET       1 // 0 --> without reset, 1 --> full reset, 2 --> gamma reset
+  #define RESET       1 
 #endif
 #ifdef GRESET
   #define RESET       2
 #endif
-#ifdef SPEEDTEST
-  #define SPEED_TEST  1 // 1 --> mcs speed test
-#endif
+
 #define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
-#define SIMPLIFIED  1 // 1 --> simplify the system algorithm to alpha=beta=1.
+#define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
 
 /***************************************************************
  *                            FUNCTIONS                       
  **************************************************************/
 
-void inicializacao(void); 
+void initialize(void); 
 void openfiles(void); 
 void sweep(void); 
-void vizualizacao(int,unsigned long); 
-void somas(void);
+void visualize(int,unsigned long); 
 void states(void); 
 void measures1(void); 
 void measures2(void);
@@ -89,16 +86,16 @@ void measures2(void);
   int percolates2d(int);
 #endif
 bool exists(const char*);
-bool teste(double);
+bool probcheck(double);
 
 /***************************************************************
  *                         GLOBAL VARIABLES                   
  **************************************************************/
 
 FILE *fp1,*fp2;
-int *spin,**viz,soma,*memory,*measures,*zealot,*right,*left,*up, *down, soma, somaz, conexoes;
+int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
 #ifdef CLUSTER
-  int *siz, *label, *his0, *his0_perc, cl1, numc, mx1, mx2, aga;
+  int *siz, *label, *his, *his_perc, cl1, numc, mx1, mx2;
   int probperc0,probperc1;
 #endif
 unsigned long seed;
@@ -109,7 +106,7 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  int i,j,k=0;
+  int k=0;
 
   #if(SEED==0)
     seed = time(0);
@@ -121,11 +118,11 @@ int main(void){
     openfiles(); 
   #endif
 
-  inicializacao();
+  initialize();
 
-  for (j=0;j<=MCS+1;j++)  {
+  for (int j=0;j<=MCS+1;j++)  {
     #if(VISUAL==1)
-      vizualizacao(j,seed);
+      visualize(j,seed);
       sweep();
     #else
       if (measures[k]==j) {  
@@ -133,19 +130,19 @@ int main(void){
           snap();   
           k++;        
         #else  
-          #if(SPEED_TEST==1)
+          #if(SPEEDTEST==1)
             clock_t t=clock();
           #endif
           #if(CLUSTER==0)
             states();
-            if(somaz==N){
+            if(sumz==N){
               while(measures[k]!=0){
-                fprintf(fp1,"%d %.6f %.6f %.6f\n",measures[k],(double)soma/N,(double)somaz/N,(double)conexoes/N);
+                fprintf(fp1,"%d %.6f %.6f %.6f\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N);
                 k++;
               }           
               break;
             }
-            fprintf(fp1,"%d %.6f %.6f %.6f\n",j,(double)soma/N,(double)somaz/N,(double)conexoes/N);
+            fprintf(fp1,"%d %.6f %.6f %.6f\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N);
             k++;
           #else 
             hoshen_kopelman();
@@ -159,7 +156,7 @@ int main(void){
             fprintf(fp1,"%d %d %d %d %d\n", j,numc,probperc0,mx1,mx2);
             k++;
           #endif
-          #if(SPEED_TEST==1)
+          #if(SPEEDTEST==1)
             t=clock()-t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;
             printf("one measure: %fs\n",time_taken);
@@ -167,7 +164,7 @@ int main(void){
         #endif
       }
 
-      #if(SPEED_TEST==1)
+      #if(SPEEDTEST==1)
         clock_t t=clock();
         sweep();
         t=clock()-t;
@@ -187,17 +184,17 @@ int main(void){
 /***************************************************************
  *                        INICIALIZAÇÃO  
  **************************************************************/
-void inicializacao(void) {
+void initialize(void) {
  
   start_randomic(seed);
 
   #ifdef CLUSTER
-    his0 = malloc(N*sizeof(int));
-    his0_perc = malloc(N*sizeof(int));
+    his = malloc(N*sizeof(int));
+    his_perc = malloc(N*sizeof(int));
   #endif
 
   spin = malloc(N*sizeof(int));
-  viz = (int**)malloc(N*sizeof(int*));
+  neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
   measures = malloc(MCS*sizeof(int));
   zealot = malloc(N*sizeof(int));
@@ -208,7 +205,7 @@ void inicializacao(void) {
   certainty = malloc(N*sizeof(double));
 
   for(int i=0; i<N; i++){
-    viz[i] = (int*)malloc(4*sizeof(int));
+    neigh[i] = (int*)malloc(4*sizeof(int));
   }
 
   for(int n=0; n<N; n++) { 
@@ -216,7 +213,7 @@ void inicializacao(void) {
     zealot[n] = 0;
     memory[n] = 0;
 
-    #if(BINARY==1)
+    #if(NBINARY==0)
       int k=FRANDOM*2;
       spin[n] = k*2 - 1; 
     #else
@@ -226,14 +223,14 @@ void inicializacao(void) {
   } 
 
   for (int i = 0; i < N; i++) {    
-    viz[i][0] = (i+1)%L + (i/L)*L; //dir
-    viz[i][1] = (i-1+L)%L + (i/L)*L; //esq
-    viz[i][2] = (i-L+N)%N; //cima
-    viz[i][3] = (i+L)%N; //baixo
-    right[i] = viz[i][0];
-    left[i] = viz[i][1];
-    up[i] = viz[i][2];
-    down[i] = viz[i][3];
+    neigh[i][0] = (i+1)%L + (i/L)*L; //right
+    neigh[i][1] = (i-1+L)%L + (i/L)*L; //left
+    neigh[i][2] = (i-L+N)%N; //up
+    neigh[i][3] = (i+L)%N; //down
+    right[i] = neigh[i][0];
+    left[i] = neigh[i][1];
+    up[i] = neigh[i][2];
+    down[i] = neigh[i][3];
   }
 
   #if(LOGSCALE==1)
@@ -250,129 +247,129 @@ void inicializacao(void) {
 void sweep(void) {
 
   for (int n=0; n<N; n++) {
-    int sitio = FRANDOM*N;
+    int site = FRANDOM*N;
     int dir = FRANDOM*4;
-    int vizinho = viz[sitio][dir];
+    int neighbour = neigh[site][dir];
     #if(SIMPLIFIED==1)
-      if(spin[sitio]!=spin[vizinho]) {
-        if(zealot[sitio] == 0){
+      if(spin[site]!=spin[neighbour]) {
+        if(zealot[site] == 0){
 
-          #if(BINARY==1)
-            memory[sitio]=1;
-            spin[sitio] = spin[vizinho];
+          #if(NBINARY==0)
+            memory[site]=1;
+            spin[site] = spin[neighbour];
           #else
-            memory[spin[sitio]]--;
-            spin[sitio] = spin[vizinho];
-            memory[spin[sitio]]++;
+            memory[spin[site]]--;
+            spin[site] = spin[neighbour];
+            memory[spin[site]]++;
           #endif
         }
-        certainty[vizinho] += INCREMENTO;
+        certainty[neighbour] += DETA;
 
         #if(RESET==2)
-          certainty[sitio] = certainty[sitio]/GAMMA;
+          certainty[site] = certainty[site]/GAMMA;
         #endif
         #if(RESET==1)
-          certainty[sitio] = 0;
+          certainty[site] = 0;
         #endif
         #if(RESET==0)
-          certainty[sitio] -= INCREMENTO;
+          certainty[site] -= DETA;
         #endif     
 
         #if(INTRANS==0)
-          if(certainty[sitio]<=THRESHOLD)zealot[sitio]=0;
+          if(certainty[site]<=THRESHOLD)zealot[site]=0;
         #endif
 
-        if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
+        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
         continue;
       }
       else{
-        certainty[sitio] += INCREMENTO;
-        certainty[vizinho] += INCREMENTO;
-        if(certainty[sitio]>=THRESHOLD)zealot[sitio]=1;
-        if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
+        certainty[site] += DETA;
+        certainty[neighbour] += DETA;
+        if(certainty[site]>=THRESHOLD)zealot[site]=1;
+        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
         continue;
       }
       
     #else
-      bool acc1 = teste(ALPHA);
-      bool acc2 = teste(BETA);
-      if(spin[sitio]!=spin[vizinho]) {
-        if(zealot[sitio] == 0){
+      bool acc1 = probcheck(ALPHA);
+      bool acc2 = probcheck(BETA);
+      if(spin[site]!=spin[neighbour]) {
+        if(zealot[site] == 0){
           if(acc1==true) {
 
-            #if(BINARY==1)
-              memory[sitio]=1;
-              spin[sitio] = spin[vizinho];
+            #if(NBINARY==0)
+              memory[site]=1;
+              spin[site] = spin[neighbour];
             #else
-              memory[spin[sitio]]--;
-              spin[sitio] = spin[vizinho];
-              memory[spin[sitio]]++;
+              memory[spin[site]]--;
+              spin[site] = spin[neighbour];
+              memory[spin[site]]++;
             #endif
 
             #if(RESET==2)
-              certainty[sitio] = certainty[sitio]/GAMMA;
+              certainty[site] = certainty[site]/GAMMA;
             #endif
 
             #if(RESET==1)
-              certainty[sitio] = 0;
+              certainty[site] = 0;
             #endif
 
             #if(RESET==0)
-              certainty[sitio] -= INCREMENTO;
+              certainty[site] -= DETA;
             #endif
 
-            certainty[vizinho] += INCREMENTO;
+            certainty[neighbour] += DETA;
             #if(INTRANS==0)
-              if(certainty[sitio]<=THRESHOLD)zealot[sitio]=0;
+              if(certainty[site]<=THRESHOLD)zealot[site]=0;
             #endif
-            if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
+            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
 
           }
           else{
-            certainty[sitio] += INCREMENTO;
-            certainty[vizinho] -= INCREMENTO;
+            certainty[site] += DETA;
+            certainty[neighbour] -= DETA;
 
             #if(INTRANS==0)
-              if(certainty[vizinho]<=THRESHOLD)zealot[vizinho]=0;
+              if(certainty[neighbour]<=THRESHOLD)zealot[neighbour]=0;
             #endif
 
-            if(certainty[sitio]>=THRESHOLD)zealot[sitio]=1;
+            if(certainty[site]>=THRESHOLD)zealot[site]=1;
           }
         }
 
         else {
           if (acc2==true) {
 
-            certainty[vizinho] += INCREMENTO;
+            certainty[neighbour] += DETA;
 
             #if(RESET==2)
-              certainty[sitio] = certainty[sitio]/GAMMA;
+              certainty[site] = certainty[site]/GAMMA;
             #endif
 
             #if(RESET==1)
-              certainty[sitio] = 0;
+              certainty[site] = 0;
             #endif
 
             #if(RESET==0)
-              certainty[sitio] -= INCREMENTO;
+              certainty[site] -= DETA;
             #endif
             
             #if(INTRANS==0)
-              if(certainty[sitio]<=THRESHOLD)zealot[sitio]=0;
+              if(certainty[site]<=THRESHOLD)zealot[site]=0;
             #endif
-            if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
+            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
 
           }
 
           else  {
-            certainty[sitio] -= INCREMENTO;
-            certainty[vizinho] += INCREMENTO;
+            certainty[site] -= DETA;
+            certainty[neighbour] += DETA;
 
             #if(INTRANS==0)
-              if(certainty[sitio]<=THRESHOLD)zealot[sitio]=0;
+              if(certainty[site]<=THRESHOLD)zealot[site]=0;
             #endif
 
-            if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
+            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
 
           }
 
@@ -381,10 +378,10 @@ void sweep(void) {
       }
 
       else{
-        certainty[sitio] += INCREMENTO;
-        certainty[vizinho] += INCREMENTO;
-        if(certainty[sitio]>=THRESHOLD)zealot[sitio]=1;
-        if(certainty[vizinho]>=THRESHOLD)zealot[vizinho]=1;
+        certainty[site] += DETA;
+        certainty[neighbour] += DETA;
+        if(certainty[site]>=THRESHOLD)zealot[site]=1;
+        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
         continue;
       }
     #endif    
@@ -395,23 +392,23 @@ void sweep(void) {
  *               Check states numbers
  ***************************************************************/
 void states(void) {
-  #if(BINARY==1)  
-    soma=N;
+  #if(NBINARY==0)  
+    sum=N;
   #else
-    soma=0;
+    sum=0;
   #endif
-  somaz=0;
-  conexoes=0;
+  sumz=0;
+  activesum=0;
   for (int i=0; i<N; i++) {
-    #if(BINARY==1)
-      if (memory[i]!=0) soma--;
+    #if(NBINARY==0)
+      if (memory[i]!=0) sum--;
     #else
-      if (memory[i]>=0) soma++;
+      if (memory[i]>=0) sum++;
     #endif
     
-    if (zealot[i]!=0) somaz++;
-    if (spin[right[i]]!=spin[i]) conexoes++;
-    if (spin[down[i]]!=spin[i]) conexoes++;
+    if (zealot[i]!=0) sumz++;
+    if (spin[right[i]]!=spin[i]) activesum++;
+    if (spin[down[i]]!=spin[i]) activesum++;
   }
 }
  /**************************************************************
@@ -449,7 +446,7 @@ void measures2(void){
  *                      Teste
  *************************************************************/
 
-bool teste(double _ALPHA) {
+bool probcheck(double _ALPHA) {
   double r = FRANDOM;
   if(r<=_ALPHA)return true;
   else return false;
@@ -458,11 +455,11 @@ bool teste(double _ALPHA) {
 /**************************************************************
  *                       Vizualização                   
  *************************************************************/
-void vizualizacao(int _j,unsigned long _seed) {
+void visualize(int _j,unsigned long _seed) {
   int l;
   printf("pl '-' matrix w image t 'time = %d seed = %ld'\n",_j,_seed);
   for(l = N-1; l >= 0; l--) {
-    #if(BINARY==1)
+    #if(NBINARY==0)
       if(zealot[l]==1)printf("%d ", spin[l]+1);
       else printf("%d ", spin[l]);
     #else
@@ -529,7 +526,7 @@ void hoshen_kopelman(void) {
   numc=0;
   probperc0=0;
   probperc1=0;
-  his0[N] = 0;
+  his[N] = 0;
   
   label = malloc(N*sizeof(int));
   siz = malloc(N*sizeof(int));
@@ -537,7 +534,7 @@ void hoshen_kopelman(void) {
   for (i=0; i<N; ++i) {
     label[i] = i;
     siz[i] = 0;
-    his0[i] = 0;
+    his[i] = 0;
   }
 
   for (i=0;i < N; ++i) {
@@ -562,14 +559,14 @@ void hoshen_kopelman(void) {
 
   for (i=0; i<N; ++i) {
     if (siz[i]>0) {
-      ++his0[siz[i]];
+      ++his[siz[i]];
       if (siz[i]>=temp1) {
         temp2 = temp1;
         temp1 = siz[i];
       }
       else if (siz[i]>temp2) temp2 = siz[i];       
       p0 = percolates2d(i);
-      if(p0==0)++his0_perc[siz[i]];
+      if(p0==0)++his_perc[siz[i]];
       else probperc0 = p0;
       ++(numc); /* Count total number of clusters */
     }
@@ -624,19 +621,19 @@ int percolates2d(int site) {
 *******************************************************************************/
 void connections(int i,int j) {
 
-unsigned long i1,j1;
+  unsigned long i1,j1;
+  
+  i1 = label[i];                            /* check where i points to          */
+  while (label[i1] != i1)i1 = label[i1];    /* while it doesn't point to itself */
 
-i1 = label[i];                            /* check where i points to          */
-while (label[i1] != i1)                   /* while it doesn't point to itself */
-      i1 = label[i1];
+  j1 = label[j];                            /* check where j points to          */
+  while (label[j1] != j1)j1 = label[j1];    /* while it doesn't point to itself */
 
-j1 = label[j];                            /* check where j points to          */
-while (label[j1] != j1)                   /* while it doesn't point to itself */
-      j1 = label[j1];
+  if (label[i1] > label[j1])label[i1] = label[j1];
+  else label[j1] = label[i1];
 
-if (label[i1] > label[j1]) label[i1] = label[j1];
-                  else label[j1] = label[i1];
-return;
+  return;
+
 }
 #endif
 
@@ -663,14 +660,14 @@ void openfiles(void) {
 
   #if(INTRANS==0)
 
-    #if(BINARY==1)
+    #if(NBINARY==0)
 
       #if(RESET==0)
 
-        snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+        snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         while(exists(teste)==true) {
           identifier++;
-          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         }
 
         #if(DEBUG==1)
@@ -679,7 +676,7 @@ void openfiles(void) {
           seed=identifier;
         #endif
 
-        sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+        sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
         fp1 = fopen(output_file1,"w");
         fflush(fp1);
         return;
@@ -688,10 +685,10 @@ void openfiles(void) {
 
         #if(RESET==1)
 
-          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -700,17 +697,17 @@ void openfiles(void) {
           seed=identifier;
           #endif
 
-          sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+          sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
 
         #else
 
-          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -719,7 +716,7 @@ void openfiles(void) {
           seed=identifier;
           #endif
 
-          sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,seed);
+          sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
@@ -732,10 +729,10 @@ void openfiles(void) {
 
       #if(RESET==0)
 
-        snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+        snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         while(exists(teste)==true) {
           identifier++;
-          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         }
 
         #if(DEBUG==1)
@@ -744,7 +741,7 @@ void openfiles(void) {
           seed=identifier;
         #endif
 
-        sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+        sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
         fp1 = fopen(output_file1,"w");
         fflush(fp1);
         return;
@@ -753,10 +750,10 @@ void openfiles(void) {
 
         #if(RESET==1)
 
-          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -765,17 +762,17 @@ void openfiles(void) {
             seed=identifier;
           #endif
 
-          sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+          sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
 
         #else
 
-          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -784,7 +781,7 @@ void openfiles(void) {
             seed=identifier;
           #endif
 
-          sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,seed);
+          sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
@@ -797,14 +794,14 @@ void openfiles(void) {
 
   #else
 
-    #if(BINARY==1)
+    #if(NBINARY==0)
 
       #if(RESET==0)
 
-        snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+        snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         while(exists(teste)==true) {
           identifier++;
-          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         }
 
         #if(DEBUG==1)
@@ -813,7 +810,7 @@ void openfiles(void) {
           seed=identifier;
         #endif
 
-        sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+        sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
         fp1 = fopen(output_file1,"w");
         fflush(fp1);
         return;
@@ -822,10 +819,10 @@ void openfiles(void) {
       
         #if(RESET==1)
 
-          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -834,17 +831,17 @@ void openfiles(void) {
           seed=identifier;
           #endif
 
-          sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+          sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
 
         #else
 
-          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -853,7 +850,7 @@ void openfiles(void) {
           seed=identifier;
           #endif
 
-          sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,seed);
+          sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
@@ -866,10 +863,10 @@ void openfiles(void) {
 
       #if(RESET==0)
 
-        snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+        snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         while(exists(teste)==true) {
           identifier++;
-          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
         }
 
         #if(DEBUG==1)
@@ -878,7 +875,7 @@ void openfiles(void) {
           seed=identifier;
         #endif
 
-        sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+        sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
         fp1 = fopen(output_file1,"w");
         fflush(fp1);
         return;
@@ -886,10 +883,10 @@ void openfiles(void) {
       #else
 
         #if(RESET==1)
-          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -898,17 +895,17 @@ void openfiles(void) {
             seed=identifier;
           #endif
 
-          sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,INCREMENTO,seed);
+          sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
 
         #else
 
-          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           while(exists(teste)==true) {
             identifier++;
-            snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,identifier);
+            snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
           }
 
           #if(DEBUG==1)
@@ -917,7 +914,7 @@ void openfiles(void) {
             seed=identifier;
           #endif
 
-          sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-INCREMENTO-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,INCREMENTO,seed);
+          sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
           fp1 = fopen(output_file1,"w");
           fflush(fp1);
           return;
