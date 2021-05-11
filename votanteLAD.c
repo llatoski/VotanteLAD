@@ -16,7 +16,6 @@
 // -DRESET  [full reset case]
 // -DGRESET [gamma reset case]
 // -DINTRANS [intrans case]
-// -DCLUSTER [swap to cluster measures]
 
 // -DSPEEDTEST [sweep and measure speed test]
 // -DDEBUG [debug program]
@@ -80,11 +79,9 @@ void measures2(void);
 #ifdef SNAPSHOTS
   void snap(void);  
 #endif
-#ifdef CLUSTER
-  void hoshen_kopelman(void);
-  void connections(int,int);
-  int percolates2d(int);
-#endif
+void hoshen_kopelman(void);
+void connections(int,int);
+int percolates2d(int);
 bool exists(const char*);
 bool probcheck(double);
 
@@ -94,10 +91,8 @@ bool probcheck(double);
 
 FILE *fp1,*fp2;
 int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
-#ifdef CLUSTER
-  int *siz, *label, *his, *his_perc, cl1, numc, mx1, mx2;
-  int probperc0,probperc1;
-#endif
+int *siz, *label, *his, *his_perc, cl1, numc, mx1, mx2;
+int probperc0,probperc1;
 unsigned long seed;
 double *certainty;
 
@@ -133,29 +128,17 @@ int main(void){
           #if(SPEEDTEST==1)
             clock_t t=clock();
           #endif
-          #if(CLUSTER==0)
-            states();
-            if(sumz==N){
-              while(measures[k]!=0){
-                fprintf(fp1,"%d %.6f %.6f %.6f\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N);
-                k++;
-              }           
-              break;
-            }
-            fprintf(fp1,"%d %.6f %.6f %.6f\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N);
-            k++;
-          #else 
-            hoshen_kopelman();
-            if(numc==1){
-              while(measures[k]!=0){
-                fprintf(fp1,"%d %d %d %d %d\n", measures[k],numc,probperc0,mx1,mx2);
-                k++;
-              }
-              break;
-            }
-            fprintf(fp1,"%d %d %d %d %d\n", j,numc,probperc0,mx1,mx2);
-            k++;
-          #endif
+          states();
+          hoshen_kopelman();
+          if(sumz==N){
+            while(measures[k]!=0){
+              fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,(double)mx2/N,probperc0);
+              k++;
+            }           
+            break;
+          }
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,(double)mx2/N,probperc0);
+          k++;
           #if(SPEEDTEST==1)
             t=clock()-t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;
@@ -163,7 +146,6 @@ int main(void){
           #endif
         #endif
       }
-
       #if(SPEEDTEST==1)
         clock_t t=clock();
         sweep();
@@ -188,10 +170,8 @@ void initialize(void) {
  
   start_randomic(seed);
 
-  #ifdef CLUSTER
-    his = malloc(N*sizeof(int));
-    his_perc = malloc(N*sizeof(int));
-  #endif
+  his = malloc(N*sizeof(int));
+  his_perc = malloc(N*sizeof(int));
 
   spin = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
@@ -512,7 +492,6 @@ void visualize(int _j,unsigned long _seed) {
 #endif
 
 
-#if(CLUSTER==1)
 /**************************************************************
  *                    Cluster measures                   
  *************************************************************/
@@ -635,7 +614,6 @@ void connections(int i,int j) {
   return;
 
 }
-#endif
 
 /**************************************************************
  *               Check for duplicate file                  
