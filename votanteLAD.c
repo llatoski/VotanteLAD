@@ -1,6 +1,6 @@
 /*************************************************************************
 *                     Votante Latoski-Arenzon-Dantas 2D                  *
-*                             V1.03 08/05/2021                           *
+*                             V1.04 11/05/2021                           *
 *************************************************************************/
 
 /***************************************************************
@@ -46,10 +46,9 @@
 #define MCS         1000000 //Max evolution time
 #define THRESHOLD   1. //Certainty's treshold
 #define MEASURES    40
-
 #define ALPHA       1.  //Transiten probability 1
 #define BETA        1.  //Transiten probability 2
-#define GAMMA       2.  //Gamma reset scale
+#define GAMMA       1.05  //Gamma reset scale
 
 /****************************************************************
  *                            SETTINGS 
@@ -111,7 +110,12 @@ int main(void){
   
   #if(SNAPSHOTS==0 && VISUAL==0)
     openfiles(); 
+  #else
+    #if(DEBUG==1)
+      seed = 1111111111;
+    #endif
   #endif
+
 
   initialize();
 
@@ -172,7 +176,6 @@ void initialize(void) {
 
   his = malloc(N*sizeof(int));
   his_perc = malloc(N*sizeof(int));
-
   spin = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
@@ -230,6 +233,7 @@ void sweep(void) {
     int site = FRANDOM*N;
     int dir = FRANDOM*4;
     int neighbour = neigh[site][dir];
+
     #if(SIMPLIFIED==1)
       if(spin[site]!=spin[neighbour]) {
         if(zealot[site] == 0){
@@ -242,7 +246,9 @@ void sweep(void) {
             spin[site] = spin[neighbour];
             memory[spin[site]]++;
           #endif
+
         }
+
         certainty[neighbour] += DETA;
 
         #if(RESET==2)
@@ -269,7 +275,6 @@ void sweep(void) {
         if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
         continue;
       }
-      
     #else
       bool acc1 = probcheck(ALPHA);
       bool acc2 = probcheck(BETA);
@@ -365,6 +370,7 @@ void sweep(void) {
         continue;
       }
     #endif    
+
   }
 }
 
