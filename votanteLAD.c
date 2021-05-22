@@ -1,6 +1,6 @@
 /*************************************************************************
 *                     Votante Latoski-Arenzon-Dantas 2D                  *
-*                             V1.04 11/05/2021                           *
+*                             V1.05 22/05/2021                           *
 *************************************************************************/
 
 /***************************************************************
@@ -90,7 +90,7 @@ bool probcheck(double);
 
 FILE *fp1,*fp2;
 int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
-int *siz, *label, *his, *his_perc, cl1, numc, mx1, mx2;
+int *siz, *label, *his, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
 unsigned long seed;
 double *certainty;
@@ -134,14 +134,14 @@ int main(void){
           #endif
           states();
           hoshen_kopelman();
-          if(sumz==N){
+          if(sumz==N | numc == 1){
             while(measures[k]!=0){
-              fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,(double)mx2/N,probperc0);
+              fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
               k++;
             }           
             break;
           }
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,(double)mx2/N,probperc0);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
           k++;
           #if(SPEEDTEST==1)
             t=clock()-t;
@@ -175,7 +175,6 @@ void initialize(void) {
   start_randomic(seed);
 
   his = malloc(N*sizeof(int));
-  his_perc = malloc(N*sizeof(int));
   spin = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
@@ -503,8 +502,8 @@ void visualize(int _j,unsigned long _seed) {
  *************************************************************/
 void hoshen_kopelman(void) {
   
-  int i,j,temp1,temp2,p0;
-
+  int i,j,temp1,temp2;
+  int bigst1=0,bigst2=0;
   mx1=0;
   mx2=0;
   cl1=0;
@@ -548,15 +547,20 @@ void hoshen_kopelman(void) {
       if (siz[i]>=temp1) {
         temp2 = temp1;
         temp1 = siz[i];
+        bigst2 = bigst1;
+        bigst1 = i;
       }
-      else if (siz[i]>temp2) temp2 = siz[i];       
-      p0 = percolates2d(i);
-      if(p0==0)++his_perc[siz[i]];
-      else probperc0 = p0;
+      else if (siz[i]>temp2){
+        temp2 = siz[i];
+        bigst2 = i;
+      } 
       ++(numc); /* Count total number of clusters */
     }
   }
 
+  probperc0 = percolates2d(bigst1);
+  if(temp2>0)probperc1 = percolates2d(bigst2);
+  
   mx1 = temp1;
   mx2 = temp2;
   
@@ -619,6 +623,13 @@ void connections(int i,int j) {
 
   return;
 
+}
+
+/*****************************************************************************
+ *                            	   Comparison (greater -> smaller)            *
+ ****************************************************************************/
+int comp (const void *x, const void *y) {
+	return - (int) (*(int *)x - *(int*)y);
 }
 
 /**************************************************************
