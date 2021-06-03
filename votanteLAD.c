@@ -134,7 +134,7 @@ int main(void){
           #endif
           states();
           hoshen_kopelman();
-          if(sumz==N | numc == 1){
+          if( ( sumz == N ) | ( numc == 1 ) ){
             while(measures[k]!=0){
               fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
               k++;
@@ -528,7 +528,6 @@ void hoshen_kopelman(void) {
 
   for (i=0; i<N; ++i) {
     j = i;
-    int k=0;
     while (label[j] != j)
     {
       j = label[j];
