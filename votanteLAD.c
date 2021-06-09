@@ -100,8 +100,6 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  int k=0;
-
   #if(SEED==0)
     seed = time(0);
   #else
@@ -110,6 +108,7 @@ int main(void){
   
   #if(SNAPSHOTS==0 && VISUAL==0)
     openfiles(); 
+    int k=0;
   #else
     #if(DEBUG==1)
       seed = 1111111111;
