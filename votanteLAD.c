@@ -1,6 +1,6 @@
 /*************************************************************************
 *                     Votante Latoski-Arenzon-Dantas 2D                  *
-*                             V1.06 03/06/2021                           *
+*                             V1.07 18/06/2021                           *
 *************************************************************************/
 
 /***************************************************************
@@ -90,7 +90,7 @@ bool probcheck(double);
 
 FILE *fp1,*fp2;
 int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
-int *siz, *label, *his, cl1, numc, mx1, mx2;
+int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
 unsigned long seed;
 double *certainty;
@@ -123,6 +123,16 @@ int main(void){
       visualize(j,seed);
       sweep();
     #else
+      if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
+        states();
+        hoshen_kopelman();
+        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+        while(measures[k]!=0){
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          k++;
+        }           
+        break;
+      }
       if (measures[k]==j) {  
         #if(SNAPSHOTS==1)
           snap();   
@@ -133,13 +143,6 @@ int main(void){
           #endif
           states();
           hoshen_kopelman();
-          if( ( sumz == N ) | ( numc == 1 ) ){
-            while(measures[k]!=0){
-              fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-              k++;
-            }           
-            break;
-          }
           fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
           k++;
           #if(SPEEDTEST==1)
@@ -185,8 +188,17 @@ void initialize(void) {
   down = malloc(N*sizeof(int));
   certainty = malloc(N*sizeof(double));
 
+    #if(NBINARY==0)
+      qt = malloc(2*sizeof(int));
+    #else
+      qt = malloc(N*sizeof(int));
+    #endif
+
   for(int i=0; i<N; i++){
     neigh[i] = (int*)malloc(4*sizeof(int));
+    #if(NBINARY==1)
+      qt[n] = 0;
+    #endif
   }
 
   for(int n=0; n<N; n++) { 
@@ -197,6 +209,7 @@ void initialize(void) {
     #if(NBINARY==0)
       int k=FRANDOM*2;
       spin[n] = k*2 - 1; 
+      qt[k]++;
     #else
       spin[n] = n;
     #endif
@@ -238,7 +251,9 @@ void sweep(void) {
 
           #if(NBINARY==0)
             memory[site]=1;
+            qt[(spin[site] + 1 )/2]--;
             spin[site] = spin[neighbour];
+            qt[(spin[neighbour] + 1 )/2]++;
           #else
             memory[spin[site]]--;
             spin[site] = spin[neighbour];
