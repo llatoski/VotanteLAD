@@ -497,7 +497,7 @@ void visualize(int _j,unsigned long _seed) {
     lat2eps_set_color(2,0x333434); // black gray
     lat2eps_set_color(3,0xC2C2C2); // white gray
     lat2eps_set_color(4,0xFF0000); // red
-    lat2eps_set_color(5,0x31a2f2); // blue
+    lat2eps_set_color(5,0x0000FF); // blue
     lat2eps_set_color(6,0xff4545); // gray red
     lat2eps_set_color(7,0x81C2EF); // gray blue
 

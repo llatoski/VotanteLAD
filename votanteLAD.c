@@ -485,18 +485,18 @@ void visualize(int _j,unsigned long _seed) {
     lat2eps_set_color(2,0x333434); // black gray
     lat2eps_set_color(3,0xC2C2C2); // white gray
     lat2eps_set_color(4,0xFF0000); // red
-    lat2eps_set_color(5,0x31a2f2); // blue
+    lat2eps_set_color(5,0x0000FF); // blue
     lat2eps_set_color(6,0xff4545); // gray red
     lat2eps_set_color(7,0x81C2EF); // gray blue
 
     for(l=0; l<N; l++) {
       if(spin[l]==1) {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,6);
-        else lat2eps_set_site(l%L,l/L,4);
+        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,4);
+        else lat2eps_set_site(l%L,l/L,6);
       }
       else {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,7);
-        else lat2eps_set_site(l%L,l/L,5);
+        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,5);
+        else lat2eps_set_site(l%L,l/L,7);
       } 
     }
 
