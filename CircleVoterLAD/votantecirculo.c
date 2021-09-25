@@ -108,14 +108,14 @@ int main(void){
   
   #if(SNAPSHOTS==0 && VISUAL==0)
     openfiles(); 
-    int k=0;
+    
   #else
     #if(DEBUG==1)
       seed = 1111111111;
     #endif
   #endif
 
-
+  int k=0;
   initialize();
 
   for (int j=0;j<=MCS+1;j++)  {
@@ -204,14 +204,14 @@ void initialize(void) {
   #if(WALL==0)
     for(int n=0; n<N; n++) {
       certainty[n] = 0;
-      zealot[n] = 1;
+      zealot[n] = 0;
       memory[n] = 0;
       double a = pow(abs(n%L - L/2),2);
       double b = pow(abs(n/L - L/2),2);
       if( ( a + b ) <= N/16 ) {
-        k=0;
+        k=1;
       }
-      else k=1;
+      else k=0;
       spin[n] = k*2 - 1; 
       qt[k]++;
     } 
@@ -503,12 +503,12 @@ void visualize(int _j,unsigned long _seed) {
 
     for(l=0; l<N; l++) {
       if(spin[l]==1) {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,6);
-        else lat2eps_set_site(l%L,l/L,4);
+        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,4);
+        else lat2eps_set_site(l%L,l/L,6);
       }
       else {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,7);
-        else lat2eps_set_site(l%L,l/L,5);
+        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,5);
+        else lat2eps_set_site(l%L,l/L,7);
       } 
     }
 

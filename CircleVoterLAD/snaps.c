@@ -89,7 +89,7 @@ bool probcheck(double);
  **************************************************************/
 
 FILE *fp1,*fp2;
-int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
+int *spin,*print,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
 int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
 unsigned long seed;
@@ -118,50 +118,51 @@ int main(void){
 
   initialize();
 
-  for (int j=0;j<=MCS+1;j++)  {
-    #if(VISUAL==1)
-      visualize(j,seed);
-      sweep();
-    #else
-      if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
-        states();
-        hoshen_kopelman();
-        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-        while(measures[k]!=0){
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-          k++;
-        }           
-        break;
+  for (int j=0;j<=5000;j++)  {
+    if(j==0){
+      snap();
+    }
+    if(j==2500){
+      for(int i=0; i<N; i++){
+        if(print[i]>=0){
+          if(spin[i]==1 && zealot[i]==1)print[i]++;
+        }
       }
-      if (measures[k]==j) {  
-        #if(SNAPSHOTS==1)
-          snap();   
-          k++;        
-        #else  
-          #if(SPEEDTEST==1)
-            clock_t t=clock();
-          #endif
-          states();
-          hoshen_kopelman();
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-          k++;
-          #if(SPEEDTEST==1)
-            t=clock()-t;
-            double time_taken = ((double)t)/CLOCKS_PER_SEC;
-            printf("one measure: %fs\n",time_taken);
-          #endif
-        #endif
+      snap();
+    }
+    if(j==500){
+      for(int i=0; i<N; i++){
+        if(print[i]>=0){
+          if(spin[i]==1 && zealot[i]==1)print[i]++;
+        }
       }
-      #if(SPEEDTEST==1)
-        clock_t t=clock();
-        sweep();
-        t=clock()-t;
-        double time_taken = ((double)t)/CLOCKS_PER_SEC;
-        printf("onesweep: %fs\n",time_taken);
-      #else
-        sweep();
-      #endif
-    #endif
+      snap();
+    }
+    if(j==1000){
+      for(int i=0; i<N; i++){
+        if(print[i]>=0){
+          if(spin[i]==1 && zealot[i]==1)print[i]++;
+        }
+      }
+      snap();
+    }
+    if(j==1500){
+      for(int i=0; i<N; i++){
+        if(print[i]>=0){
+          if(spin[i]==1 && zealot[i]==1)print[i]++;
+        }
+      }
+      snap();
+    }
+    if(j==2000){
+      for(int i=0; i<N; i++){
+        if(print[i]>=0){
+          if(spin[i]==1 && zealot[i]==1)print[i]++;
+        }
+      }
+      snap();
+    }
+    sweep();
   }
 
   #if(SNAPSHOTS==0)
@@ -178,6 +179,7 @@ void initialize(void) {
 
   his = malloc(N*sizeof(int));
   spin = malloc(N*sizeof(int));
+  print = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
   measures = malloc(MCS*sizeof(int));
@@ -200,22 +202,35 @@ void initialize(void) {
       qt[n] = 0;
     #endif
   }
-
-  for(int n=0; n<N; n++) { 
-    certainty[n] = 0;
-    zealot[n] = 0;
-    memory[n] = 0;
-
-    #if(NBINARY==0)
-      int k=FRANDOM*2;
+  int k;
+  #if(WALL==0)
+    for(int n=0; n<N; n++) {
+      certainty[n] = 0;
+      zealot[n] = 0;
+      memory[n] = 0;
+      double a = pow(abs(n%L - L/2),2);
+      double b = pow(abs(n/L - L/2),2);
+      if( ( a + b ) <= N/4 ) {
+        k=1;
+      }
+      else k=0;
       spin[n] = k*2 - 1; 
       qt[k]++;
-    #else
-      spin[n] = n;
-    #endif
-
-  } 
-
+      print[n]=spin[n];
+    } 
+  #else
+    for(int n=0; n<N; n++) {
+      certainty[n] = 0;
+      zealot[n] = 1;
+      memory[n] = 0;
+      if( n <= N/2 ) {
+        k=0;
+      }
+      else k=1;
+      spin[n] = k*2 - 1; 
+      qt[k]++;
+    } 
+  #endif
   for (int i = 0; i < N; i++) {    
     neigh[i][0] = (i+1)%L + (i/L)*L; //right
     neigh[i][1] = (i-1+L)%L + (i/L)*L; //left
@@ -485,19 +500,29 @@ void visualize(int _j,unsigned long _seed) {
     lat2eps_set_color(2,0x333434); // black gray
     lat2eps_set_color(3,0xC2C2C2); // white gray
     lat2eps_set_color(4,0xFF0000); // red
-    lat2eps_set_color(5,0x0000FF); // blue
+    lat2eps_set_color(5,0x31a2f2); // blue
     lat2eps_set_color(6,0xff4545); // gray red
     lat2eps_set_color(7,0x81C2EF); // gray blue
 
     for(l=0; l<N; l++) {
       if(spin[l]==1) {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,4);
-        else lat2eps_set_site(l%L,l/L,6);
+        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,6);
+        else lat2eps_set_site(l%L,l/L,4);
       }
       else {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,5);
-        else lat2eps_set_site(l%L,l/L,7);
+        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,7);
+        else lat2eps_set_site(l%L,l/L,5);
       } 
+    }
+
+    for(l=0; l<N; l++) {
+      if(print[l]==-1)lat2eps_set_site(l%L,l/L,1);
+      if(print[l]==1)lat2eps_set_site(l%L,l/L,0);
+      if(print[l]==2)lat2eps_set_site(l%L,l/L,4);
+      if(print[l]==3)lat2eps_set_site(l%L,l/L,5);
+      if(print[l]==4)lat2eps_set_site(l%L,l/L,2);
+      if(print[l]==5)lat2eps_set_site(l%L,l/L,6);
+      if(print[l]==6)lat2eps_set_site(l%L,l/L,7);
     }
 
     snprintf(teste,sizeof teste,"sd%ld[%d].eps",seed,identifier);
