@@ -1,0 +1,438 @@
+# LAD Voter Model 2D Smooth Domains
+# Seed: 1111111111
+# Linear size: 64
+# Irreversible: 0
+# Incremento: 0.010000
+# Binary: 1
+# Reset (1 Full, 2 Gamma reset): 1
+
+
+# Time: 1
+# Persistence: 0.65380859
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.75292969
+# Total number of clusters: 0.04882812
+# Biggest cluster size: 718
+# Percolation 1: 1
+# Sec. biggest cluster size: 549
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 2
+# Persistence: 0.47265625
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.66503906
+# Total number of clusters: 0.03466797
+# Biggest cluster size: 1629
+# Percolation 1: 2
+# Sec. biggest cluster size: 929
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 3
+# Persistence: 0.35180664
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.64355469
+# Total number of clusters: 0.03393555
+# Biggest cluster size: 1112
+# Percolation 1: 2
+# Sec. biggest cluster size: 1000
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 4
+# Persistence: 0.27465820
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.60546875
+# Total number of clusters: 0.02856445
+# Biggest cluster size: 1446
+# Percolation 1: 2
+# Sec. biggest cluster size: 1320
+# Percolation 2: 1
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 5
+# Persistence: 0.21582031
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.60449219
+# Total number of clusters: 0.03125000
+# Biggest cluster size: 952
+# Percolation 1: 0
+# Sec. biggest cluster size: 809
+# Percolation 2: 1
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 6
+# Persistence: 0.17578125
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.58300781
+# Total number of clusters: 0.02856445
+# Biggest cluster size: 1498
+# Percolation 1: 1
+# Sec. biggest cluster size: 1291
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 8
+# Persistence: 0.11743164
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.57470703
+# Total number of clusters: 0.03051758
+# Biggest cluster size: 1389
+# Percolation 1: 2
+# Sec. biggest cluster size: 659
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 11
+# Persistence: 0.07470703
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.52392578
+# Total number of clusters: 0.02343750
+# Biggest cluster size: 1939
+# Percolation 1: 2
+# Sec. biggest cluster size: 1228
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 17
+# Persistence: 0.03662109
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.47119141
+# Total number of clusters: 0.02368164
+# Biggest cluster size: 2031
+# Percolation 1: 2
+# Sec. biggest cluster size: 805
+# Percolation 2: 1
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 24
+# Persistence: 0.02050781
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.45410156
+# Total number of clusters: 0.02221680
+# Biggest cluster size: 2055
+# Percolation 1: 2
+# Sec. biggest cluster size: 1462
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 34
+# Persistence: 0.01269531
+# Zealot fraction: 0.00000000
+# Density of active interfaces: 0.42333984
+# Total number of clusters: 0.01782227
+# Biggest cluster size: 2025
+# Percolation 1: 2
+# Sec. biggest cluster size: 1628
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+
+
+# Time: 49
+# Persistence: 0.00415039
+# Zealot fraction: 0.00366211
+# Density of active interfaces: 0.42529297
+# Total number of clusters: 0.02441406
+# Biggest cluster size: 2071
+# Percolation 1: 2
+# Sec. biggest cluster size: 761
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 11 0 11 11 0 0
+2 2 0 2 2 0 0
+4 0 11 0 0 0 0
+6 0 2 0 0 0 0
+
+
+# Time: 70
+# Persistence: 0.00244141
+# Zealot fraction: 0.03564453
+# Density of active interfaces: 0.41845703
+# Total number of clusters: 0.03125000
+# Biggest cluster size: 1843
+# Percolation 1: 2
+# Sec. biggest cluster size: 676
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 20 0 20 20 0 0
+2 5 0 5 5 0 0
+3 4 0 4 4 0 0
+4 1 20 1 1 0 0
+5 2 0 2 2 0 0
+6 0 5 0 0 0 0
+7 0 2 0 0 0 0
+8 0 3 0 0 0 0
+9 0 1 0 0 0 0
+10 2 1 2 2 0 0
+11 1 0 1 1 0 0
+12 0 1 0 0 0 0
+13 0 1 0 0 0 0
+14 0 1 0 0 0 0
+18 1 1 1 1 0 0
+29 0 1 0 0 0 0
+41 1 0 0 1 0 0
+44 0 0 1 0 0 0
+
+
+# Time: 99
+# Persistence: 0.00146484
+# Zealot fraction: 0.06054688
+# Density of active interfaces: 0.41357422
+# Total number of clusters: 0.03491211
+# Biggest cluster size: 1715
+# Percolation 1: 2
+# Sec. biggest cluster size: 1543
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 19 0 19 19 0 0
+2 6 0 6 6 0 0
+3 4 0 4 4 0 0
+4 4 19 4 4 0 0
+5 3 0 3 3 0 0
+6 1 6 1 1 0 0
+7 0 3 0 0 0 0
+8 0 5 0 0 0 0
+9 0 3 0 0 0 0
+11 0 1 0 0 0 0
+14 1 0 1 1 0 0
+16 0 1 0 0 0 0
+19 0 1 0 0 0 0
+23 1 0 1 1 0 0
+24 1 1 1 1 0 0
+25 0 1 0 0 0 0
+26 0 1 0 0 0 0
+28 0 1 0 0 0 0
+33 2 0 2 2 0 0
+41 1 0 1 1 0 0
+
+
+# Time: 142
+# Persistence: 0.00024414
+# Zealot fraction: 0.08300781
+# Density of active interfaces: 0.39501953
+# Total number of clusters: 0.03149414
+# Biggest cluster size: 2133
+# Percolation 1: 2
+# Sec. biggest cluster size: 905
+# Percolation 2: 1
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 24 0 24 24 0 0
+2 4 0 4 4 0 0
+3 2 0 2 2 0 0
+4 3 24 3 3 0 0
+6 2 4 2 2 0 0
+7 0 1 0 0 0 0
+8 0 2 0 0 0 0
+9 2 2 2 2 0 0
+11 0 2 0 0 0 0
+12 1 1 1 1 0 0
+14 1 0 1 1 0 0
+15 0 2 0 0 0 0
+16 1 0 1 1 0 0
+18 0 2 0 0 0 0
+25 0 1 0 0 0 0
+26 0 1 0 0 0 0
+28 1 0 1 1 0 0
+29 0 1 0 0 0 0
+34 0 1 0 0 0 0
+37 1 0 1 1 0 0
+39 1 0 1 1 0 0
+40 1 0 1 1 0 0
+47 0 1 0 0 0 0
+74 1 0 0 1 0 0
+75 0 0 1 0 0 0
+
+
+# Time: 203
+# Persistence: 0.00024414
+# Zealot fraction: 0.18969727
+# Density of active interfaces: 0.30957031
+# Total number of clusters: 0.02563477
+# Biggest cluster size: 1421
+# Percolation 1: 1
+# Sec. biggest cluster size: 1277
+# Percolation 2: 2
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 17 0 17 17 0 0
+2 4 0 4 4 0 0
+4 0 17 0 0 0 0
+5 1 0 1 1 0 0
+6 1 4 1 1 0 0
+10 0 1 0 0 0 0
+11 0 1 0 0 0 0
+21 0 1 0 0 0 0
+24 1 0 1 1 0 0
+25 1 1 1 1 0 0
+26 1 0 0 1 0 0
+28 0 1 1 0 0 0
+29 0 1 0 0 0 0
+30 0 1 0 0 0 0
+34 1 0 1 1 0 0
+38 1 0 1 1 0 0
+42 0 1 0 0 0 0
+62 0 1 0 0 0 0
+65 1 0 1 1 0 0
+107 1 0 1 1 0 0
+148 0 1 0 0 0 0
+422 1 0 0 1 0 0
+423 0 0 1 0 0 0
+
+
+# Time: 289
+# Persistence: 0.00000000
+# Zealot fraction: 0.32763672
+# Density of active interfaces: 0.24511719
+# Total number of clusters: 0.02685547
+# Biggest cluster size: 973
+# Percolation 1: 0
+# Sec. biggest cluster size: 883
+# Percolation 2: 1
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 18 0 18 18 0 0
+2 2 0 2 2 0 0
+3 3 0 3 3 0 0
+4 2 18 2 2 0 0
+5 2 0 2 2 0 0
+6 1 2 1 1 0 0
+7 1 2 1 1 0 0
+8 1 3 1 1 0 0
+9 1 1 1 1 0 0
+10 0 2 0 0 0 0
+11 0 1 0 0 0 0
+13 0 1 0 0 0 0
+15 0 1 0 0 0 0
+26 0 1 0 0 0 0
+27 1 0 1 1 0 0
+55 0 1 0 0 0 0
+64 0 1 0 0 0 0
+122 1 0 0 1 0 0
+123 0 0 1 0 0 0
+141 1 0 1 1 0 0
+264 0 1 0 0 0 0
+973 1 0 0 1 0 0
+977 0 0 1 0 0 0
+
+
+# Time: 412
+# Persistence: 0.00000000
+# Zealot fraction: 0.46582031
+# Density of active interfaces: 0.17236328
+# Total number of clusters: 0.02001953
+# Biggest cluster size: 1489
+# Percolation 1: 1
+# Sec. biggest cluster size: 616
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 9 0 9 9 0 0
+2 3 0 3 3 0 0
+4 0 9 0 0 0 0
+6 0 3 0 0 0 0
+11 1 0 1 1 0 0
+13 1 0 1 1 0 0
+15 0 1 0 0 0 0
+18 0 1 0 0 0 0
+156 0 1 0 0 0 0
+380 1 0 1 1 0 0
+1489 1 0 0 0 1 0
+
+
+# Time: 587
+# Persistence: 0.00000000
+# Zealot fraction: 0.58496094
+# Density of active interfaces: 0.13964844
+# Total number of clusters: 0.01660156
+# Biggest cluster size: 1829
+# Percolation 1: 2
+# Sec. biggest cluster size: 559
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 6 0 6 6 0 0
+2 1 0 1 1 0 0
+4 0 6 0 0 0 0
+6 0 1 0 0 0 0
+131 0 1 0 0 0 0
+559 1 0 1 1 0 0
+1829 1 0 0 0 0 1
+
+
+# Time: 837
+# Persistence: 0.00000000
+# Zealot fraction: 0.76538086
+# Density of active interfaces: 0.09179688
+# Total number of clusters: 0.01147461
+# Biggest cluster size: 2828
+# Percolation 1: 2
+# Sec. biggest cluster size: 430
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 5 0 5 5 0 0
+2 1 0 1 1 0 0
+4 1 5 1 1 0 0
+6 0 1 0 0 0 0
+8 0 1 0 0 0 0
+77 0 1 0 0 0 0
+296 1 0 1 1 0 0
+2828 1 0 0 0 0 1
+
+
+# Time: 1193
+# Persistence: 0.00000000
+# Zealot fraction: 0.79248047
+# Density of active interfaces: 0.09179688
+# Total number of clusters: 0.00634766
+# Biggest cluster size: 3133
+# Percolation 1: 2
+# Sec. biggest cluster size: 236
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+2 1 0 1 1 0 0
+6 0 1 0 0 0 0
+63 0 1 0 0 0 0
+111 1 0 1 1 0 0
+3133 1 0 0 0 0 1
+
+
+# Time: 1701
+# Persistence: 0.00000000
+# Zealot fraction: 0.88452148
+# Density of active interfaces: 0.04248047
+# Total number of clusters: 0.00585938
+# Biggest cluster size: 3589
+# Percolation 1: 2
+# Sec. biggest cluster size: 219
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 2 0 2 2 0 0
+4 1 2 1 1 0 0
+9 0 1 0 0 0 0
+22 0 1 0 0 0 0
+28 1 0 1 1 0 0
+3589 1 0 0 0 0 1
+
+
+# Time: 1995
+# Persistence: 0.00000000
+# Zealot fraction: 0.97631836
+# Density of active interfaces: 0.00000000
+# Total number of clusters: 0.00122070
+# Biggest cluster size: 3998
+# Percolation 1: 2
+# Sec. biggest cluster size: 95
+# Percolation 2: 0
+# Size Clusters Hulls Areas Perc0 Perc1 Perc2
+1 1 0 1 1 0 0
+4 0 1 0 0 0 0
+3998 1 0 0 0 0 1
+
+

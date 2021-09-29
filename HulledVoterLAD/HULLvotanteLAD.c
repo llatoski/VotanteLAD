@@ -68,7 +68,7 @@
   #define BINARY      0
 #endif
 
-#define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
+#define LOGSCALE    0 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
 #define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
 
 /***************************************************************
@@ -98,10 +98,11 @@ bool probcheck(double);
  *                         GLOBAL VARIABLES                   
  **************************************************************/
 
-FILE *fp1,*fp2;
+FILE *fp1,*fp2,*fp3,*fp4;
 int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
-int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
+int *siz, *label, **his, *qt, cl1, numc, mx1, mx2;
 int *hull,*hullarea,*perc,*domainz,*domsize;
+int **histhull, **histhullarea, **histperc0, **histperc1, **histperc2;
 int cont=0;
 int probperc0,probperc1;
 int hull_perimeter;
@@ -158,6 +159,9 @@ int main(void){
 
   #if(SNAPSHOTS==0)
   fclose(fp1);
+  fclose(fp2);
+  fclose(fp3);
+  fclose(fp4);
   #endif
 
 }
@@ -168,7 +172,12 @@ void initialize(void) {
  
   start_randomic(seed);
 
-  his = malloc(N*sizeof(int));
+  his = (int**)malloc(N*sizeof(int*));
+  histhull = (int**)malloc(N*sizeof(int*));
+  histhullarea = (int**)malloc(N*sizeof(int*));
+  histperc0 = (int**)malloc(N*sizeof(int*));
+  histperc1 = (int**)malloc(N*sizeof(int*));
+  histperc2 = (int**)malloc(N*sizeof(int*));
   spin = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
@@ -188,6 +197,12 @@ void initialize(void) {
 
   for(int i=0; i<N; i++){
     neigh[i] = (int*)malloc(4*sizeof(int));
+    his[i] = (int*)malloc(2*sizeof(int));
+    histhull[i] = (int*)malloc(2*sizeof(int));
+    histhullarea[i] = (int*)malloc(2*sizeof(int));
+    histperc0[i] = (int*)malloc(2*sizeof(int));
+    histperc1[i] = (int*)malloc(2*sizeof(int));
+    histperc2[i] = (int*)malloc(2*sizeof(int));
     #if(NBINARY==1)
       qt[n] = 0;
     #endif
@@ -417,9 +432,9 @@ void medidas(int _a, int _tempo){
       fprintf(fp2,"# Zealot fraction: %.8f\n",(double)sumz/N);
       fprintf(fp2,"# Density of active interfaces: %.8f\n",(double)activesum/N);
       fprintf(fp2,"# Total number of clusters: %.8f\n",(double)numc/N);
-      fprintf(fp2,"# Biggest cluster size: %.8f\n",(double)mx1/N);
+      fprintf(fp2,"# Biggest cluster size: %d\n",mx1);
       fprintf(fp2,"# Percolation 1: %d\n",probperc0);
-      fprintf(fp2,"# Sec. biggest cluster size: %.8f\n",(double)mx2/N);
+      fprintf(fp2,"# Sec. biggest cluster size: %d\n",mx2);
       fprintf(fp2,"# Percolation 2: %d\n",probperc1);
       fprintf(fp2,"# Index Size Perc Hull Area Smooth\n");
       for (int i=0; i<numc; ++i){
@@ -427,6 +442,40 @@ void medidas(int _a, int _tempo){
       }
       fprintf(fp2,"\n\n");
       fflush(fp2);
+      fprintf(fp3,"# Time: %d\n",_tempo);
+      fprintf(fp3,"# Persistence: %.8f\n",(double)sum/N);
+      fprintf(fp3,"# Zealot fraction: %.8f\n",(double)sumz/N);
+      fprintf(fp3,"# Density of active interfaces: %.8f\n",(double)activesum/N);
+      fprintf(fp3,"# Total number of clusters: %.8f\n",(double)numc/N);
+      fprintf(fp3,"# Biggest cluster size: %d\n",mx1);
+      fprintf(fp3,"# Percolation 1: %d\n",probperc0);
+      fprintf(fp3,"# Sec. biggest cluster size: %d\n",mx2);
+      fprintf(fp3,"# Percolation 2: %d\n",probperc1);
+      fprintf(fp3,"# Size Clusters Hulls Areas Perc0 Perc1 Perc2\n");
+
+      fprintf(fp4,"# Time: %d\n",_tempo);
+      fprintf(fp4,"# Persistence: %.8f\n",(double)sum/N);
+      fprintf(fp4,"# Zealot fraction: %.8f\n",(double)sumz/N);
+      fprintf(fp4,"# Density of active interfaces: %.8f\n",(double)activesum/N);
+      fprintf(fp4,"# Total number of clusters: %.8f\n",(double)numc/N);
+      fprintf(fp4,"# Biggest cluster size: %d\n",mx1);
+      fprintf(fp4,"# Percolation 1: %d\n",probperc0);
+      fprintf(fp4,"# Sec. biggest cluster size: %d\n",mx2);
+      fprintf(fp4,"# Percolation 2: %d\n",probperc1); 
+      fprintf(fp4,"# Size Clusters Hulls Areas Perc0 Perc1 Perc2\n");
+      for (int i=1; i<N; ++i){
+        if( ( his[i][0] != 0 ) || ( histhull[i][0] != 0 ) || ( histhullarea[i][0] != 0 ) || ( histperc0[i][0] != 0 ) || ( histperc1[i][0] != 0 ) || ( histperc2[i][0] != 0 ) ) {
+          fprintf(fp3,"%d %d %d %d %d %d %d\n",i,his[i][0],histhull[i][0],histhullarea[i][0],histperc0[i][0],histperc1[i][0],histperc2[i][0]);
+        }
+        if( ( his[i][1] != 0 ) || ( histhull[i][1] != 0 ) || ( histhullarea[i][1] != 0 ) || ( histperc0[i][1] != 0 ) || ( histperc1[i][1] != 0 ) || ( histperc2[i][1] != 0 ) ) {
+          fprintf(fp4,"%d %d %d %d %d %d %d\n",i,his[i][1],histhull[i][1],histhullarea[i][1],histperc0[i][1],histperc1[i][1],histperc2[i][1]);
+        }
+      }
+      fprintf(fp3,"\n\n");
+      fprintf(fp4,"\n\n");
+      fflush(fp3);
+      fflush(fp4);
+      
     break;
 
     case 2:
@@ -527,7 +576,14 @@ void hoshen_kopelman(void) {
   for (i=0; i<N; ++i) {
     label[i] = i;
     siz[i] = 0;
-    his[i] = 0;
+    for(j=0; j<2; ++j){
+      his[i][j] = 0;
+      histhull[i][j] = 0;
+      histhullarea[i][j] = 0;
+      histperc0[i][j] = 0;
+      histperc1[i][j] = 0;
+      histperc2[i][j] = 0;
+    }
   }
 
   for (i=0;i < N; ++i) {
@@ -551,7 +607,6 @@ void hoshen_kopelman(void) {
 
   for (i=0; i<N; ++i) {
     if (siz[i]>0) {
-      ++his[siz[i]];
       if (siz[i]>=temp1) {
         temp2 = temp1;
         temp1 = siz[i];
@@ -576,28 +631,47 @@ void hoshen_kopelman(void) {
   for (i=0; i<N; ++i) {
     if(siz[i]>0){
       perc[count]=percolates2d(i);
-      if(perc[count]==0) {  
-        switch (siz[i]) {
-          case 1:
-            hullarea[count]=1;
-            hull[count]=4;          
-          break;
-          case 2:
-            hullarea[count]=2;
-            hull[count]=6;
-          break;
-          default:
-            hullarea[count]=biasedwalk(i,label);
-            hull[count]=hull_perimeter;
-          break;
-        }
+      switch(perc[count]){
+        case 0:
+          switch (siz[i]) {
+            case 1:
+              hullarea[count]=1;
+              hull[count]=4;          
+            break;
+            case 2:
+              hullarea[count]=2;
+              hull[count]=6;
+            break;
+            default:
+              hullarea[count]=biasedwalk(i,label);
+              hull[count]=hull_perimeter;
+            break;
+          }
+          ++histperc0[siz[i]][zealot[i]];
+        break;  
+        case 1 :
+          hullarea[count]=0;
+          hull[count]=0;
+          ++histperc1[siz[i]][zealot[i]];
+        break;
+        case 2 :
+          hullarea[count]=0;
+          hull[count]=0;
+          ++histperc2[siz[i]][zealot[i]];
+        break;
+      }      
+      if(zealot[i]==1){
+        domainz[count]=1;
+        ++histhull[hull[count]][1];
+        ++histhullarea[hullarea[count]][1];
+        ++his[siz[i]][1];
       }
       else{
-        hullarea[count]=0;
-        hull[count]=0;
-      }
-      if(zealot[i]==1)domainz[count]=1;
-      else domainz[count]=0;
+        domainz[count]=0;
+        ++histhull[hull[count]][0];
+        ++histhullarea[hullarea[count]][0];
+        ++his[siz[i]][0];
+      } 
       domsize[count]=siz[i];
       count++;
     }
@@ -907,7 +981,7 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[100],output_file2[100];
+  char output_file1[100],output_file2[100],output_file3[100],output_file4[100];
   char teste[100];
   unsigned long identifier = seed;
 
@@ -925,7 +999,7 @@ void openfiles(void) {
 
   sprintf(output_file1,"sd%ld.dsf",seed);
   fp1 = fopen(output_file1,"w");
-  fprintf(fp1,"# LAD Voter Model 2D\n");
+  fprintf(fp1,"# LAD Voter Model 2D Main Output\n");
   fprintf(fp1,"# Seed: %ld\n",seed);
   fprintf(fp1,"# Linear size: %d\n",L);
   fprintf(fp1,"# Irreversible: %d\n",INTRANS);
@@ -938,7 +1012,7 @@ void openfiles(void) {
 
   sprintf(output_file2,"sd%ld_2.dsf",seed);
   fp2 = fopen(output_file2,"w");
-  fprintf(fp2,"# LAD Voter Model 2D\n");
+  fprintf(fp2,"# LAD Voter Model 2D Aux Output 1\n");
   fprintf(fp2,"# Seed: %ld\n",seed);
   fprintf(fp2,"# Linear size: %d\n",L);
   fprintf(fp2,"# Irreversible: %d\n",INTRANS);
@@ -947,6 +1021,30 @@ void openfiles(void) {
   fprintf(fp2,"# Reset (1 Full, 2 Gamma reset): %.d\n",RESET);
   fprintf(fp2,"\n\n");
   fflush(fp2);
+
+  sprintf(output_file3,"sd%ld_3.dsf",seed);
+  fp3 = fopen(output_file3,"w");
+  fprintf(fp3,"# LAD Voter Model 2D Rough Domains\n");
+  fprintf(fp3,"# Seed: %ld\n",seed);
+  fprintf(fp3,"# Linear size: %d\n",L);
+  fprintf(fp3,"# Irreversible: %d\n",INTRANS);
+  fprintf(fp3,"# Incremento: %.6f\n",DETA);
+  fprintf(fp3,"# Binary: %d\n",BINARY);
+  fprintf(fp3,"# Reset (1 Full, 2 Gamma reset): %.d\n",RESET);
+  fprintf(fp3,"\n\n");
+  fflush(fp3);
+
+  sprintf(output_file4,"sd%ld_4.dsf",seed);
+  fp4 = fopen(output_file4,"w");
+  fprintf(fp4,"# LAD Voter Model 2D Smooth Domains\n");
+  fprintf(fp4,"# Seed: %ld\n",seed);
+  fprintf(fp4,"# Linear size: %d\n",L);
+  fprintf(fp4,"# Irreversible: %d\n",INTRANS);
+  fprintf(fp4,"# Incremento: %.6f\n",DETA);
+  fprintf(fp4,"# Binary: %d\n",BINARY);
+  fprintf(fp4,"# Reset (1 Full, 2 Gamma reset): %.d\n",RESET);
+  fprintf(fp4,"\n\n");
+  fflush(fp4);
 
   return;
   
