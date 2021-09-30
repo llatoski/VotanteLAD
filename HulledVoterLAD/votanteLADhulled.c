@@ -997,7 +997,7 @@ void openfiles(void) {
     seed=identifier;
   #endif
 
-  sprintf(output_file1,"sd%ld.dsf",seed);
+  sprintf(output_file1,"sd%ld_1.dsf",seed);
   fp1 = fopen(output_file1,"w");
   fprintf(fp1,"# LAD Voter Model 2D Main Output\n");
   fprintf(fp1,"# Seed: %ld\n",seed);

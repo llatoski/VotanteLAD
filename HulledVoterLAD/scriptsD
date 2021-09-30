@@ -1,0 +1,37 @@
+#!/bin/bash
+# Usage: ./scriptsD TIME DOMAINTYPE
+# TIME is the actual time 
+# DOMAINTYPE can be ROUGH (non zealots) or SMOOTH (zealots)
+# LCFL 29/09/2021
+
+if [ "$#" -ne 2 ]; then
+    echo "Usage: bash scriptsD TIME ROUGH/SMOOTH"
+    exit 1
+fi
+if [ "$2" != ROUGH ] && [ "$2" != SMOOTH ]; then
+    echo "Usage: bash scriptsD TIME ROUGH/SMOOTH"
+    exit 1
+fi
+if [ "$2" == ROUGH ]; then
+    type=3
+fi
+if [ "$2" == SMOOTH ]; then
+    type=4
+fi
+
+printf '%s ' *_$type.dsf | xargs cat | awk -f distribution.awk -v TIME="$1" > dj1
+awk -f histo_hull.awk -v TIME="$1" -v bin=1 dj1
+awk -f histo_hull.awk -v TIME="$1" -v bin=10 dj1
+awk -f histo_hull.awk -v TIME="$1" -v bin=100 dj1
+awk -f histo_hull.awk -v TIME="$1" -v bin=1000 dj1
+
+printf '%s ' *_$type.dsf | xargs cat | awk -f distribution.awk -v TIME="$1" > dj1
+awk -f histo_bulk.awk -v TIME="$1" -v bin=1 dj1
+awk -f histo_bulk.awk -v TIME="$1" -v bin=10 dj1
+awk -f histo_bulk.awk -v TIME="$1" -v bin=100 dj1
+awk -f histo_bulk.awk -v TIME="$1" -v bin=1000 dj1
+
+
+echo "ok histogram"
+
+rm -rf dj1
