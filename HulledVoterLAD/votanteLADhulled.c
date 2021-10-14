@@ -104,6 +104,7 @@ int *siz, *label, **his, *qt, cl1, numc, mx1, mx2;
 int *hull,*hullarea,*perc,*domainz,*domsize;
 int **histhull, **histhullarea, **histperc0, **histperc1, **histperc2;
 int cont=0;
+char root_name[200];
 int probperc0,probperc1;
 int hull_perimeter;
 unsigned long seed;
@@ -114,18 +115,19 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  #if(SEED==0)
-    seed = time(0);
+  #if(DEBUG==0)
+    #if(SEED==0)
+      seed = time(0);
+      if (seed%2==0) ++seed;
+    #else
+      seed = SEED;
+    #endif
   #else
-    seed = SEED;
+      seed = 1111111111;
   #endif
   
-  #if(SNAPSHOTS==0 && VISUAL==0)
+  #if((SNAPSHOTS==0)&&(VISUAL==0))
     openfiles(); 
-  #else
-    #if(DEBUG==1)
-      seed = 1111111111;
-    #endif
   #endif
 
   int k=0;
@@ -172,12 +174,12 @@ void initialize(void) {
  
   start_randomic(seed);
 
-  his = (int**)malloc(N*sizeof(int*));
+  his = (int**)malloc((N+1)*sizeof(int*));
   histhull = (int**)malloc(N*sizeof(int*));
   histhullarea = (int**)malloc(N*sizeof(int*));
-  histperc0 = (int**)malloc(N*sizeof(int*));
-  histperc1 = (int**)malloc(N*sizeof(int*));
-  histperc2 = (int**)malloc(N*sizeof(int*));
+  histperc0 = (int**)malloc((N+1)*sizeof(int*));
+  histperc1 = (int**)malloc((N+1)*sizeof(int*));
+  histperc2 = (int**)malloc((N+1)*sizeof(int*));
   spin = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
@@ -204,9 +206,13 @@ void initialize(void) {
     histperc1[i] = (int*)malloc(2*sizeof(int));
     histperc2[i] = (int*)malloc(2*sizeof(int));
     #if(NBINARY==1)
-      qt[n] = 0;
+      qt[i] = 0;
     #endif
   }
+    his[N] = (int*)malloc(2*sizeof(int));
+    histperc0[N] = (int*)malloc(2*sizeof(int));
+    histperc1[N] = (int*)malloc(2*sizeof(int));
+    histperc2[N] = (int*)malloc(2*sizeof(int));
 
   for(int n=0; n<N; n++) { 
     certainty[n] = 0;
@@ -568,7 +574,6 @@ void hoshen_kopelman(void) {
   numc=0;
   probperc0=0; 
   probperc1=0;
-  his[N] = 0;
   
   label = malloc(N*sizeof(int));
   siz = malloc(N*sizeof(int));
@@ -586,10 +591,16 @@ void hoshen_kopelman(void) {
     }
   }
 
-  for (i=0;i < N; ++i) {
-    if (spin[i]==spin[right[i]] && zealot[i]==zealot[right[i]]) connections(i,right[i]);
-    if (spin[i]==spin[down[i]] && zealot[i]==zealot[down[i]]) connections(i,down[i]);
-  }
+  if(DETA>0)
+    for (i=0;i < N; ++i) {
+      if (spin[i]==spin[right[i]] && zealot[i]==zealot[right[i]]) connections(i,right[i]);
+      if (spin[i]==spin[down[i]] && zealot[i]==zealot[down[i]]) connections(i,down[i]);
+    }
+  else
+    for (i=0;i < N; ++i) {
+      if (spin[i]==spin[right[i]]) connections(i,right[i]);
+      if (spin[i]==spin[down[i]]) connections(i,down[i]);
+    }
 
   for (i=0; i<N; ++i) {
     j = i;
@@ -981,23 +992,61 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[100],output_file2[100],output_file3[100],output_file4[100];
-  char teste[100];
-  unsigned long identifier = seed;
+  char output_file1[300],output_file2[300],output_file3[300],output_file4[300];
+  char teste[250];
 
-  snprintf(teste,sizeof teste,"sd%ld.dsf",identifier);
-  while(exists(teste)==true) {
-    identifier++;
-    snprintf(teste,sizeof teste,"sd%ld.dsf",identifier);
-  }
-
-  #if(DEBUG==1)
-    seed=1111111111;
-  #else
-    seed=identifier;
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==0))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==1))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==2))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==0))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==1))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==2))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==0))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==1))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==2))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==0))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==1))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==2))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
   #endif
 
-  sprintf(output_file1,"sd%ld_1.dsf",seed);
+  unsigned long identifier = seed;
+  #if(DEBUG==0)
+    sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    while(exists(teste)==true) {
+      identifier+=2;
+      sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    }
+    sprintf(teste,"%s_sd%ld",root_name,identifier);
+  #else
+    sprintf(teste,"%s_sd%ld",root_name,identifier);
+  #endif
+  
+  seed=identifier;
+
+  sprintf(output_file1,"%s_1.dsf",teste);
   fp1 = fopen(output_file1,"w");
   fprintf(fp1,"# LAD Voter Model 2D Main Output\n");
   fprintf(fp1,"# Seed: %ld\n",seed);
@@ -1010,7 +1059,7 @@ void openfiles(void) {
   fprintf(fp1,"\n\n");
   fflush(fp1);
 
-  sprintf(output_file2,"sd%ld_2.dsf",seed);
+  sprintf(output_file2,"%s_2.dsf",teste);
   fp2 = fopen(output_file2,"w");
   fprintf(fp2,"# LAD Voter Model 2D Aux Output 1\n");
   fprintf(fp2,"# Seed: %ld\n",seed);
@@ -1022,7 +1071,7 @@ void openfiles(void) {
   fprintf(fp2,"\n\n");
   fflush(fp2);
 
-  sprintf(output_file3,"sd%ld_3.dsf",seed);
+  sprintf(output_file3,"%s_3.dsf",teste);
   fp3 = fopen(output_file3,"w");
   fprintf(fp3,"# LAD Voter Model 2D Rough Domains\n");
   fprintf(fp3,"# Seed: %ld\n",seed);
@@ -1034,7 +1083,7 @@ void openfiles(void) {
   fprintf(fp3,"\n\n");
   fflush(fp3);
 
-  sprintf(output_file4,"sd%ld_4.dsf",seed);
+  sprintf(output_file4,"%s_4.dsf",teste);
   fp4 = fopen(output_file4,"w");
   fprintf(fp4,"# LAD Voter Model 2D Smooth Domains\n");
   fprintf(fp4,"# Seed: %ld\n",seed);
