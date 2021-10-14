@@ -60,6 +60,14 @@
 #ifdef GRESET
   #define RESET       2
 #endif
+#if(INTRANS==0)
+  #define INTRANS     0
+#endif
+#if(NBINARY==0)
+  #define BINARY      1
+#else
+  #define BINARY      0
+#endif
 
 #define LOGSCALE    0 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
 #define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
@@ -104,20 +112,21 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  #if(SEED==0)
-    seed = time(0);
-    if (seed%2==0) ++seed;
+  #if(DEBUG==0)
+    #if(SEED==0)
+      seed = time(0);
+      if (seed%2==0) ++seed;
+    #else
+      seed = SEED;
+    #endif
   #else
-    seed = SEED;
+      seed = 1111111111;
   #endif
   
-  #if(SNAPSHOTS==0 && VISUAL==0)
+  #if((SNAPSHOTS==0)&&(VISUAL==0))
     openfiles(); 
-  #else
-    #if(DEBUG==1)
-      seed = 1111111111;
-    #endif
   #endif
+
 
   int k=0;
   initialize();
@@ -880,8 +889,7 @@ bool exists(const char *fname){
 
 void openfiles(void) {
   char output_file1[300];
-  char teste[300];
-  unsigned long identifier = seed;
+  char teste[250];
 
   #if((INTRANS==0)&&(NBINARY==0)&&(RESET==0))
     sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
@@ -920,21 +928,30 @@ void openfiles(void) {
     sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
   #endif
 
-  sprintf(teste,"%s_sd%ld.dsf",root_name,identifier);
-  while(exists(teste)==true) {
-    identifier+=2;
-    sprintf(teste,"%s_sd%ld.dsf",root_name,identifier);
-  }
-
-  #if(DEBUG==1)
-  seed=1111111111;
-  #else
-  seed=identifier;
+ unsigned long identifier = seed;
+  #if(DEBUG==0)
+    sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    while(exists(teste)==true) {
+      identifier+=2;
+      sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    }
   #endif
+  sprintf(teste,"%s_sd%ld",root_name,identifier);
+  seed=identifier;
 
-  sprintf(output_file1,"%s",teste);
+  sprintf(output_file1,"%s_1.dsf",teste);
   fp1 = fopen(output_file1,"w");
+  fprintf(fp1,"# LAD Voter Model 2D Main Output\n");
+  fprintf(fp1,"# Seed: %ld\n",seed);
+  fprintf(fp1,"# Linear size: %d\n",L);
+  fprintf(fp1,"# Irreversible: %d\n",INTRANS);
+  fprintf(fp1,"# Incremento: %.6f\n",DETA);
+  fprintf(fp1,"# Binary: %d\n",BINARY);
+  fprintf(fp1,"# Reset (1 Full, 2 Gamma reset): %d\n",RESET);
+  fprintf(fp1,"# Time Persistence Zealots Active Clusters Big1 Perc1 Big2 Perc2\n");
+  fprintf(fp1,"\n\n");
   fflush(fp1);
+
   return;
 
 }
