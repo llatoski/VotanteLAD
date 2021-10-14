@@ -95,6 +95,7 @@ int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, 
 int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
 int hull_perimeter;
+char root_name[200];
 unsigned long seed;
 double *certainty;
 
@@ -105,6 +106,7 @@ int main(void){
 
   #if(SEED==0)
     seed = time(0);
+    if (seed%2==0) ++seed;
   #else
     seed = SEED;
   #endif
@@ -877,278 +879,62 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[100];
-  char teste[100];
+  char output_file1[300];
+  char teste[300];
   unsigned long identifier = seed;
 
-  #if(INTRANS==0)
-
-    #if(NBINARY==0)
-
-      #if(RESET==0)
-
-        snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        while(exists(teste)==true) {
-          identifier++;
-          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        }
-
-        #if(DEBUG==1)
-          seed=1111111111;
-        #else
-          seed=identifier;
-        #endif
-
-        sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-        fp1 = fopen(output_file1,"w");
-        fflush(fp1);
-        return;
-
-      #else
-
-        #if(RESET==1)
-
-          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-          seed=1111111111;
-          #else
-          seed=identifier;
-          #endif
-
-          sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #else
-
-          snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-          seed=1111111111;
-          #else
-          seed=identifier;
-          #endif
-
-          sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #endif    
-
-      #endif
-
-    #else
-
-      #if(RESET==0)
-
-        snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        while(exists(teste)==true) {
-          identifier++;
-          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        }
-
-        #if(DEBUG==1)
-          seed=1111111111;
-        #else
-          seed=identifier;
-        #endif
-
-        sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-        fp1 = fopen(output_file1,"w");
-        fflush(fp1);
-        return;
-
-      #else
-
-        #if(RESET==1)
-
-          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-            seed=1111111111;
-          #else
-            seed=identifier;
-          #endif
-
-          sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #else
-
-          snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-            seed=1111111111;
-          #else
-            seed=identifier;
-          #endif
-
-          sprintf(output_file1,"nonbinarytrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #endif
-
-      #endif
-
-    #endif
-
-  #else
-
-    #if(NBINARY==0)
-
-      #if(RESET==0)
-
-        snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        while(exists(teste)==true) {
-          identifier++;
-          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        }
-
-        #if(DEBUG==1)
-          seed=1111111111;
-        #else
-          seed=identifier;
-        #endif
-
-        sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-        fp1 = fopen(output_file1,"w");
-        fflush(fp1);
-        return;
-
-      #else
-      
-        #if(RESET==1)
-
-          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-          seed=1111111111;
-          #else
-          seed=identifier;
-          #endif
-
-          sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #else
-
-          snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-          seed=1111111111;
-          #else
-          seed=identifier;
-          #endif
-
-          sprintf(output_file1,"binaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #endif
-
-      #endif
-
-    #else
-
-      #if(RESET==0)
-
-        snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        while(exists(teste)==true) {
-          identifier++;
-          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-        }
-
-        #if(DEBUG==1)
-          seed=1111111111;
-        #else
-          seed=identifier;
-        #endif
-
-        sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-        fp1 = fopen(output_file1,"w");
-        fflush(fp1);
-        return;
-
-      #else
-
-        #if(RESET==1)
-          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-            seed=1111111111;
-          #else
-            seed=identifier;
-          #endif
-
-          sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-FULLRESET-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-
-        #else
-
-          snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          while(exists(teste)==true) {
-            identifier++;
-            snprintf(teste,sizeof teste,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,identifier);
-          }
-
-          #if(DEBUG==1)
-            seed=1111111111;
-          #else
-            seed=identifier;
-          #endif
-
-          sprintf(output_file1,"nonbinaryintrans-ALPHA%.1f-lg%d-GAMMA%.1f-DETA-%.5f-seed%ld.dsf",ALPHA,L,GAMMA,DETA,seed);
-          fp1 = fopen(output_file1,"w");
-          fflush(fp1);
-          return;
-          
-        #endif
-
-      #endif
-
-    #endif
-
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==0))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==1))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==2))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==0))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==1))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==2))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==0))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==1))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==2))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==0))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==1))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==2))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
   #endif
 
-  
+  sprintf(teste,"%s_sd%ld.dsf",root_name,identifier);
+  while(exists(teste)==true) {
+    identifier+=2;
+    sprintf(teste,"%s_sd%ld.dsf",root_name,identifier);
+  }
+
+  #if(DEBUG==1)
+  seed=1111111111;
+  #else
+  seed=identifier;
+  #endif
+
+  sprintf(output_file1,"%s",teste);
+  fp1 = fopen(output_file1,"w");
+  fflush(fp1);
+  return;
+
 }
