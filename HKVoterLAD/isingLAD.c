@@ -1,6 +1,6 @@
 /*************************************************************************
-*                     Hulled Votante Latoski-Arenzon-Dantas 2D                  *
-*                             V2.0 20/09/2021                           *
+*                     Votante Latoski-Arenzon-Dantas 2D                  *
+*                             V1.07 18/06/2021                           *
 *************************************************************************/
 
 /***************************************************************
@@ -17,6 +17,7 @@
 // -DGRESET [gamma reset case]
 // -DINTRANS [intrans case]
 
+// -DSPEEDTEST [sweep and measure speed test]
 // -DDEBUG [debug program]
 // -DVISUAL [live gif of the evolution]
 // -DSNAPSHOTS -I ~/VotanteLAD/liblat2eps/ -llat2eps [snapshots of the system]
@@ -79,10 +80,9 @@ void initialize(void);
 void openfiles(void); 
 void sweep(void); 
 void visualize(int,unsigned long); 
-void states(void);
-void medidas(int,int); 
-void measurescale(void); 
-void measurescale2(void);
+void states(void); 
+void measures1(void); 
+void measures2(void);
 #ifdef SNAPSHOTS
   void snap(void);  
 #endif
@@ -98,15 +98,13 @@ bool probcheck(double);
  *                         GLOBAL VARIABLES                   
  **************************************************************/
 
-FILE *fp1,*fp2,*fp3,*fp4;
+FILE *fp1,*fp2;
 int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
-int *siz, *label, **his, *qt, cl1, numc, mx1, mx2;
-int *hull,*hullarea,*perc,*domainz,*domsize;
-int **histhull, **histhullarea, **histperc0, **histperc1, **histperc2;
-int cont=0;
-char root_name[200];
+int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
 int hull_perimeter;
+char root_name[200];
+char output_file1[300];
 unsigned long seed;
 double *certainty;
 
@@ -130,7 +128,10 @@ int main(void){
     openfiles(); 
   #endif
 
+
   int k=0;
+  int auxmx1;
+  int teste;
   initialize();
 
   for (int j=0;j<=MCS+1;j++)  {
@@ -139,9 +140,11 @@ int main(void){
       sweep();
     #else
       if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
-        medidas(1,j);
+        states();
+        hoshen_kopelman();
+        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
         while(measures[k]!=0){
-          medidas(2,measures[k]);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
           k++;
         }           
         break;
@@ -151,19 +154,44 @@ int main(void){
           snap();   
           k++;        
         #else  
-          medidas(1,j);
+          #if(SPEEDTEST==1)
+            clock_t t=clock();
+          #endif
+          states();
+          hoshen_kopelman();
+          if(mx1==auxmx1){
+            fclose(fp1);
+            remove(output_file1);
+            teste=1;
+            sleep(5);
+            break;
+          }
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
           k++;
+          auxmx1=mx1;
+          #if(SPEEDTEST==1)
+            t=clock()-t;
+            double time_taken = ((double)t)/CLOCKS_PER_SEC;
+            printf("one measure: %fs\n",time_taken);
+          #endif
         #endif
       }
-      sweep();
+      #if(SPEEDTEST==1)
+        clock_t t=clock();
+        sweep();
+        t=clock()-t;
+        double time_taken = ((double)t)/CLOCKS_PER_SEC;
+        printf("onesweep: %fs\n",time_taken);
+      #else
+        sweep();
+      #endif
     #endif
   }
 
   #if(SNAPSHOTS==0)
-  fclose(fp1);
-  fclose(fp2);
-  fclose(fp3);
-  fclose(fp4);
+  if(teste!=1){
+    fclose(fp1);
+  }
   #endif
 
 }
@@ -174,12 +202,7 @@ void initialize(void) {
  
   start_randomic(seed);
 
-  his = (int**)malloc((N+1)*sizeof(int*));
-  histhull = (int**)malloc(N*sizeof(int*));
-  histhullarea = (int**)malloc(N*sizeof(int*));
-  histperc0 = (int**)malloc((N+1)*sizeof(int*));
-  histperc1 = (int**)malloc((N+1)*sizeof(int*));
-  histperc2 = (int**)malloc((N+1)*sizeof(int*));
+  his = malloc(N*sizeof(int));
   spin = malloc(N*sizeof(int));
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
@@ -199,20 +222,10 @@ void initialize(void) {
 
   for(int i=0; i<N; i++){
     neigh[i] = (int*)malloc(4*sizeof(int));
-    his[i] = (int*)malloc(2*sizeof(int));
-    histhull[i] = (int*)malloc(2*sizeof(int));
-    histhullarea[i] = (int*)malloc(2*sizeof(int));
-    histperc0[i] = (int*)malloc(2*sizeof(int));
-    histperc1[i] = (int*)malloc(2*sizeof(int));
-    histperc2[i] = (int*)malloc(2*sizeof(int));
     #if(NBINARY==1)
-      qt[i] = 0;
+      qt[n] = 0;
     #endif
   }
-    his[N] = (int*)malloc(2*sizeof(int));
-    histperc0[N] = (int*)malloc(2*sizeof(int));
-    histperc1[N] = (int*)malloc(2*sizeof(int));
-    histperc2[N] = (int*)malloc(2*sizeof(int));
 
   for(int n=0; n<N; n++) { 
     certainty[n] = 0;
@@ -226,6 +239,7 @@ void initialize(void) {
     #else
       spin[n] = n;
     #endif
+
   } 
 
   for (int i = 0; i < N; i++) {    
@@ -240,9 +254,9 @@ void initialize(void) {
   }
 
   #if(LOGSCALE==1)
-    measurescale(); 
+    measures1(); 
   #else
-    measurescale2();
+    measures2();
   #endif
 
 }
@@ -251,125 +265,24 @@ void initialize(void) {
  *               MCS routine
  ***************************************************************/
 void sweep(void) {
-  for (int n=0; n<N; n++) {
+    for (int n=0; n<N; n++) {
     int site = FRANDOM*N;
-    int dir = FRANDOM*4;
-    int neighbour = neigh[site][dir];
-    #if(SIMPLIFIED==1)
-      if(spin[site]!=spin[neighbour]) {
-        if(zealot[site] == 0){
-          #if(NBINARY==0)
-            memory[site]=1;
-            qt[(spin[site] + 1 )/2]--;
-            spin[site] = spin[neighbour];
-            qt[(spin[neighbour] + 1 )/2]++;
-          #else
-            memory[spin[site]]--;
-            spin[site] = spin[neighbour];
-            memory[spin[site]]++;
-          #endif
-        }
-        certainty[neighbour] += DETA;
-        #if(RESET==2)
-          certainty[site] = certainty[site]/GAMMA;
-        #endif
-        #if(RESET==1)
-          certainty[site] = 0;
-        #endif
-        #if(RESET==0)
-          certainty[site] -= DETA;
-        #endif     
-        #if(INTRANS==0)
-          if(certainty[site]<=THRESHOLD)zealot[site]=0;
-        #endif
-        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-        continue;
-      }
-      else{
-        certainty[site] += DETA;
-        certainty[neighbour] += DETA;
-        if(certainty[site]>=THRESHOLD)zealot[site]=1;
-        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-        continue;
-      }
-    #else
-      bool acc1 = probcheck(ALPHA);
-      bool acc2 = probcheck(BETA);
-      if(spin[site]!=spin[neighbour]) {
-        if(zealot[site] == 0){
-          if(acc1==true) {
-            #if(NBINARY==0)
-              memory[site]=1;
-              spin[site] = spin[neighbour];
-            #else
-              memory[spin[site]]--;
-              spin[site] = spin[neighbour];
-              memory[spin[site]]++;
-            #endif
-            #if(RESET==2)
-              certainty[site] = certainty[site]/GAMMA;
-            #endif
-            #if(RESET==1)
-              certainty[site] = 0;
-            #endif
-            #if(RESET==0)
-              certainty[site] -= DETA;
-            #endif
-            certainty[neighbour] += DETA;
-            #if(INTRANS==0)
-              if(certainty[site]<=THRESHOLD)zealot[site]=0;
-            #endif
-            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-          }
-          else{
-            certainty[site] += DETA;
-            certainty[neighbour] -= DETA;
-
-            #if(INTRANS==0)
-              if(certainty[neighbour]<=THRESHOLD)zealot[neighbour]=0;
-            #endif
-
-            if(certainty[site]>=THRESHOLD)zealot[site]=1;
-          }
-        }
-        else {
-          if (acc2==true) {
-            certainty[neighbour] += DETA;
-            #if(RESET==2)
-              certainty[site] = certainty[site]/GAMMA;
-            #endif
-            #if(RESET==1)
-              certainty[site] = 0;
-            #endif
-            #if(RESET==0)
-              certainty[site] -= DETA;
-            #endif
-            #if(INTRANS==0)
-              if(certainty[site]<=THRESHOLD)zealot[site]=0;
-            #endif
-            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-          }
-          else  {
-            certainty[site] -= DETA;
-            certainty[neighbour] += DETA;
-            #if(INTRANS==0)
-              if(certainty[site]<=THRESHOLD)zealot[site]=0;
-            #endif
-            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-          }
-        }
-      }
-      else{
-        certainty[site] += DETA;
-        certainty[neighbour] += DETA;
-        if(certainty[site]>=THRESHOLD)zealot[site]=1;
-        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-        continue;
-      }
-    #endif    
+    int E1=0;
+    int E2=0;
+    int neighbour;
+    for(int i=0; i<4; i++){
+       neighbour = neigh[site][i];
+      if(spin[neighbour]==spin[site])E1++;
+      else E2++; 
+    }
+    if(E2>=E1){
+      qt[(spin[site] + 1 )/2]--;
+      spin[site]=-spin[site];
+      qt[(spin[site] + 1 )/2]++;      
+      memory[site]=1;
+    }
   }
 }
-
 /****************************************************************
  *               Check states numbers
  ***************************************************************/
@@ -396,7 +309,7 @@ void states(void) {
  /**************************************************************
  *                       Measures Vector     // Medidas Logarítmicas
  *************************************************************/
-void measurescale(void){
+void measures1(void){
   int n=0;
   int m=0;
   for(int i=0; i<=MCS; i++) {
@@ -412,7 +325,7 @@ void measurescale(void){
  /**************************************************************
  *                       Measures Vector    // Número de medidas
  *************************************************************/
-void measurescale2(void){
+void measures2(void){
   int m=0;
   measures[0]=0;
   double temp = pow((double)MCS,1.0/(MEASURES-1));
@@ -420,73 +333,6 @@ void measurescale2(void){
     measures[i] = (int)pow(temp,(double) i);
     if(measures[i]<=m)measures[i]=m+1;
     m=measures[i];
-  }
-  return;
-}
-
- /**************************************************************
- *                       Measures
- *************************************************************/
-void medidas(int _a, int _tempo){
-  switch(_a){
-    case 1:
-      states();
-      hoshen_kopelman();
-      fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",_tempo,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-      fprintf(fp2,"# Time: %d\n",_tempo);
-      fprintf(fp2,"# Persistence: %.8f\n",(double)sum/N);
-      fprintf(fp2,"# Zealot fraction: %.8f\n",(double)sumz/N);
-      fprintf(fp2,"# Density of active interfaces: %.8f\n",(double)activesum/N);
-      fprintf(fp2,"# Total number of clusters: %.8f\n",(double)numc/N);
-      fprintf(fp2,"# Biggest cluster size: %d\n",mx1);
-      fprintf(fp2,"# Percolation 1: %d\n",probperc0);
-      fprintf(fp2,"# Sec. biggest cluster size: %d\n",mx2);
-      fprintf(fp2,"# Percolation 2: %d\n",probperc1);
-      fprintf(fp2,"# Index Size Perc Hull Area Smooth\n");
-      for (int i=0; i<numc; ++i){
-        fprintf(fp2,"%d %d %d %d %d %d\n",i,domsize[i],perc[i],hull[i],hullarea[i],domainz[i]);
-      }
-      fprintf(fp2,"\n\n");
-      fflush(fp2);
-      fprintf(fp3,"# Time: %d\n",_tempo);
-      fprintf(fp3,"# Persistence: %.8f\n",(double)sum/N);
-      fprintf(fp3,"# Zealot fraction: %.8f\n",(double)sumz/N);
-      fprintf(fp3,"# Density of active interfaces: %.8f\n",(double)activesum/N);
-      fprintf(fp3,"# Total number of clusters: %.8f\n",(double)numc/N);
-      fprintf(fp3,"# Biggest cluster size: %d\n",mx1);
-      fprintf(fp3,"# Percolation 1: %d\n",probperc0);
-      fprintf(fp3,"# Sec. biggest cluster size: %d\n",mx2);
-      fprintf(fp3,"# Percolation 2: %d\n",probperc1);
-      fprintf(fp3,"# Size Clusters Hulls Areas Perc0 Perc1 Perc2\n");
-
-      fprintf(fp4,"# Time: %d\n",_tempo);
-      fprintf(fp4,"# Persistence: %.8f\n",(double)sum/N);
-      fprintf(fp4,"# Zealot fraction: %.8f\n",(double)sumz/N);
-      fprintf(fp4,"# Density of active interfaces: %.8f\n",(double)activesum/N);
-      fprintf(fp4,"# Total number of clusters: %.8f\n",(double)numc/N);
-      fprintf(fp4,"# Biggest cluster size: %d\n",mx1);
-      fprintf(fp4,"# Percolation 1: %d\n",probperc0);
-      fprintf(fp4,"# Sec. biggest cluster size: %d\n",mx2);
-      fprintf(fp4,"# Percolation 2: %d\n",probperc1); 
-      fprintf(fp4,"# Size Clusters Hulls Areas Perc0 Perc1 Perc2\n");
-      for (int i=1; i<N; ++i){
-        if( ( his[i][0] != 0 ) || ( histhull[i][0] != 0 ) || ( histhullarea[i][0] != 0 ) || ( histperc0[i][0] != 0 ) || ( histperc1[i][0] != 0 ) || ( histperc2[i][0] != 0 ) ) {
-          fprintf(fp3,"%d %d %d %d %d %d %d\n",i,his[i][0],histhull[i][0],histhullarea[i][0],histperc0[i][0],histperc1[i][0],histperc2[i][0]);
-        }
-        if( ( his[i][1] != 0 ) || ( histhull[i][1] != 0 ) || ( histhullarea[i][1] != 0 ) || ( histperc0[i][1] != 0 ) || ( histperc1[i][1] != 0 ) || ( histperc2[i][1] != 0 ) ) {
-          fprintf(fp4,"%d %d %d %d %d %d %d\n",i,his[i][1],histhull[i][1],histhullarea[i][1],histperc0[i][1],histperc1[i][1],histperc2[i][1]);
-        }
-      }
-      fprintf(fp3,"\n\n");
-      fprintf(fp4,"\n\n");
-      fflush(fp3);
-      fflush(fp4);
-      
-    break;
-
-    case 2:
-      fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",_tempo,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-    break;
   }
   return;
 }
@@ -506,7 +352,7 @@ bool probcheck(double _ALPHA) {
  *************************************************************/
 void visualize(int _j,unsigned long _seed) {
   int l;
-  printf("pl '-' matrix w image t 'tempo = %d seed = %ld'\n",_j,_seed);
+  printf("pl '-' matrix w image t 'time = %d seed = %ld'\n",_j,_seed);
   for(l = N-1; l >= 0; l--) {
     #if(NBINARY==0)
       if(zealot[l]==1)printf("%d ", spin[l]+1);
@@ -572,8 +418,9 @@ void hoshen_kopelman(void) {
   mx2=0;
   cl1=0;
   numc=0;
-  probperc0=0; 
+  probperc0=0;
   probperc1=0;
+  his[N] = 0;
   
   label = malloc(N*sizeof(int));
   siz = malloc(N*sizeof(int));
@@ -581,26 +428,13 @@ void hoshen_kopelman(void) {
   for (i=0; i<N; ++i) {
     label[i] = i;
     siz[i] = 0;
-    for(j=0; j<2; ++j){
-      his[i][j] = 0;
-      histhull[i][j] = 0;
-      histhullarea[i][j] = 0;
-      histperc0[i][j] = 0;
-      histperc1[i][j] = 0;
-      histperc2[i][j] = 0;
-    }
+    his[i] = 0;
   }
 
-  if(DETA>0)
-    for (i=0;i < N; ++i) {
-      if (spin[i]==spin[right[i]] && zealot[i]==zealot[right[i]]) connections(i,right[i]);
-      if (spin[i]==spin[down[i]] && zealot[i]==zealot[down[i]]) connections(i,down[i]);
-    }
-  else
-    for (i=0;i < N; ++i) {
-      if (spin[i]==spin[right[i]]) connections(i,right[i]);
-      if (spin[i]==spin[down[i]]) connections(i,down[i]);
-    }
+  for (i=0;i < N; ++i) {
+    if (spin[i]==spin[right[i]] && zealot[i]==zealot[right[i]]) connections(i,right[i]);
+    if (spin[i]==spin[down[i]] && zealot[i]==zealot[down[i]]) connections(i,down[i]);
+  }
 
   for (i=0; i<N; ++i) {
     j = i;
@@ -618,6 +452,7 @@ void hoshen_kopelman(void) {
 
   for (i=0; i<N; ++i) {
     if (siz[i]>0) {
+      ++his[siz[i]];
       if (siz[i]>=temp1) {
         temp2 = temp1;
         temp1 = siz[i];
@@ -627,64 +462,8 @@ void hoshen_kopelman(void) {
       else if (siz[i]>temp2){
         temp2 = siz[i];
         bigst2 = i;
-      }
-      ++(numc); /* Count total number of clusters */
-    }
-  }
-
-  domainz = jmalloc(numc*sizeof(int));
-  hull = jmalloc(numc*sizeof(int));
-  hullarea = jmalloc(numc*sizeof(int));
-  perc = jmalloc(numc*sizeof(int));
-  domsize = jmalloc(numc*sizeof(int));
-
-  int count=0;
-  for (i=0; i<N; ++i) {
-    if(siz[i]>0){
-      perc[count]=percolates2d(i);
-      switch(perc[count]){
-        case 0:
-          switch (siz[i]) {
-            case 1:
-              hullarea[count]=1;
-              hull[count]=4;          
-            break;
-            case 2:
-              hullarea[count]=2;
-              hull[count]=6;
-            break;
-            default:
-              hullarea[count]=biasedwalk(i,label);
-              hull[count]=hull_perimeter;
-            break;
-          }
-          ++histperc0[siz[i]][zealot[i]];
-        break;  
-        case 1 :
-          hullarea[count]=0;
-          hull[count]=0;
-          ++histperc1[siz[i]][zealot[i]];
-        break;
-        case 2 :
-          hullarea[count]=0;
-          hull[count]=0;
-          ++histperc2[siz[i]][zealot[i]];
-        break;
-      }      
-      if(zealot[i]==1){
-        domainz[count]=1;
-        ++histhull[hull[count]][1];
-        ++histhullarea[hullarea[count]][1];
-        ++his[siz[i]][1];
-      }
-      else{
-        domainz[count]=0;
-        ++histhull[hull[count]][0];
-        ++histhullarea[hullarea[count]][0];
-        ++his[siz[i]][0];
       } 
-      domsize[count]=siz[i];
-      count++;
+      ++(numc); /* Count total number of clusters */
     }
   }
 
@@ -992,47 +771,12 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[300],output_file2[300],output_file3[300],output_file4[300];
   char teste[250];
 
-  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==0))
-    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==1))
-    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==2))
-    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
-  #endif
-  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==0))
-    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==1))
-    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==2))
-    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
-  #endif
-  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==0))
-    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==1))
-    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==2))
-    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
-  #endif
-  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==0))
-    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==1))
-    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
-  #endif
-  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==2))
-    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
-  #endif
+  sprintf(root_name,"ising-L%d",L);
 
   unsigned long identifier = seed;
+
   #if(DEBUG==0)
     sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
     while(exists(teste)==true) {
@@ -1041,59 +785,17 @@ void openfiles(void) {
     }
   #endif
   sprintf(teste,"%s_sd%ld",root_name,identifier);
-
-  
   seed=identifier;
 
   sprintf(output_file1,"%s_1.dsf",teste);
   fp1 = fopen(output_file1,"w");
-  fprintf(fp1,"# LAD Voter Model 2D Main Output\n");
+  fprintf(fp1,"# Ising Model 2D T=0 Quench Main Output\n");
   fprintf(fp1,"# Seed: %ld\n",seed);
   fprintf(fp1,"# Linear size: %d\n",L);
-  fprintf(fp1,"# Irreversible: %d\n",INTRANS);
-  fprintf(fp1,"# Incremento: %.6f\n",DETA);
-  fprintf(fp1,"# Binary: %d\n",BINARY);
-  fprintf(fp1,"# Reset (1 Full, 2 Gamma reset): %d\n",RESET);
   fprintf(fp1,"# Time Persistence Zealots Active Clusters Big1 Perc1 Big2 Perc2\n");
   fprintf(fp1,"\n\n");
   fflush(fp1);
 
-  sprintf(output_file2,"%s_2.dsf",teste);
-  fp2 = fopen(output_file2,"w");
-  fprintf(fp2,"# LAD Voter Model 2D Aux Output 1\n");
-  fprintf(fp2,"# Seed: %ld\n",seed);
-  fprintf(fp2,"# Linear size: %d\n",L);
-  fprintf(fp2,"# Irreversible: %d\n",INTRANS);
-  fprintf(fp2,"# Incremento: %.6f\n",DETA);
-  fprintf(fp2,"# Binary: %d\n",BINARY);
-  fprintf(fp2,"# Reset (1 Full, 2 Gamma reset): %.d\n",RESET);
-  fprintf(fp2,"\n\n");
-  fflush(fp2);
-
-  sprintf(output_file3,"%s_3.dsf",teste);
-  fp3 = fopen(output_file3,"w");
-  fprintf(fp3,"# LAD Voter Model 2D Rough Domains\n");
-  fprintf(fp3,"# Seed: %ld\n",seed);
-  fprintf(fp3,"# Linear size: %d\n",L);
-  fprintf(fp3,"# Irreversible: %d\n",INTRANS);
-  fprintf(fp3,"# Incremento: %.6f\n",DETA);
-  fprintf(fp3,"# Binary: %d\n",BINARY);
-  fprintf(fp3,"# Reset (1 Full, 2 Gamma reset): %.d\n",RESET);
-  fprintf(fp3,"\n\n");
-  fflush(fp3);
-
-  sprintf(output_file4,"%s_4.dsf",teste);
-  fp4 = fopen(output_file4,"w");
-  fprintf(fp4,"# LAD Voter Model 2D Smooth Domains\n");
-  fprintf(fp4,"# Seed: %ld\n",seed);
-  fprintf(fp4,"# Linear size: %d\n",L);
-  fprintf(fp4,"# Irreversible: %d\n",INTRANS);
-  fprintf(fp4,"# Incremento: %.6f\n",DETA);
-  fprintf(fp4,"# Binary: %d\n",BINARY);
-  fprintf(fp4,"# Reset (1 Full, 2 Gamma reset): %.d\n",RESET);
-  fprintf(fp4,"\n\n");
-  fflush(fp4);
-
   return;
-  
+
 }
