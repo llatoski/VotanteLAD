@@ -17,7 +17,6 @@
 // -DGRESET [gamma reset case]
 // -DINTRANS [intrans case]
 
-// -DSPEEDTEST [sweep and measure speed test]
 // -DDEBUG [debug program]
 // -DVISUAL [live gif of the evolution]
 // -DSNAPSHOTS -I ~/VotanteLAD/liblat2eps/ -llat2eps [snapshots of the system]
@@ -43,7 +42,7 @@
  ***************************************************************/
 
 #define N          (L*L)  //Lattice volume
-#define MCS         1000000 //Max evolution time
+#define MCS         100000000 //Max evolution time
 #define THRESHOLD   1. //Certainty's treshold
 #define MEASURES    40
 #define ALPHA       1.  //Transiten probability 1
@@ -69,7 +68,7 @@
   #define BINARY      0
 #endif
 
-#define LOGSCALE    0 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
+#define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
 #define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
 
 /***************************************************************
@@ -122,6 +121,7 @@ int main(void){
   #else
       seed = 1111111111;
   #endif
+
   
   #if((SNAPSHOTS==0)&&(VISUAL==0))
     openfiles(); 
@@ -139,9 +139,9 @@ int main(void){
       if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
         states();
         hoshen_kopelman();
-        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,qt[0]);
         while(measures[k]!=0){
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,qt[0]);
           k++;
         }           
         break;
@@ -151,29 +151,13 @@ int main(void){
           snap();   
           k++;        
         #else  
-          #if(SPEEDTEST==1)
-            clock_t t=clock();
-          #endif
           states();
           hoshen_kopelman();
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,qt[0]);
           k++;
-          #if(SPEEDTEST==1)
-            t=clock()-t;
-            double time_taken = ((double)t)/CLOCKS_PER_SEC;
-            printf("one measure: %fs\n",time_taken);
-          #endif
         #endif
       }
-      #if(SPEEDTEST==1)
-        clock_t t=clock();
-        sweep();
-        t=clock()-t;
-        double time_taken = ((double)t)/CLOCKS_PER_SEC;
-        printf("onesweep: %fs\n",time_taken);
-      #else
-        sweep();
-      #endif
+      sweep();
     #endif
   }
 
@@ -210,7 +194,7 @@ void initialize(void) {
   for(int i=0; i<N; i++){
     neigh[i] = (int*)malloc(4*sizeof(int));
     #if(NBINARY==1)
-      qt[n] = 0;
+      qt[i] = 0;
     #endif
   }
 
@@ -549,8 +533,8 @@ void hoshen_kopelman(void) {
   }
 
   for (i=0;i < N; ++i) {
-    if (spin[i]==spin[right[i]] && zealot[i]==zealot[right[i]]) connections(i,right[i]);
-    if (spin[i]==spin[down[i]] && zealot[i]==zealot[down[i]]) connections(i,down[i]);
+    if (spin[i]==spin[right[i]]) connections(i,right[i]);
+    if (spin[i]==spin[down[i]]) connections(i,down[i]);
   }
 
   for (i=0; i<N; ++i) {
@@ -651,225 +635,6 @@ void connections(int i,int j) {
 
 }
 
-/*****************************************************************************
- *                            	   Comparison (greater -> smaller)            *
- ****************************************************************************/
-int comp (const void *x, const void *y) {
-	return - (int) (*(int *)x - *(int*)y);
-}
-
-
-/*************************************************************************
-*                     Biased walks along the external hull               *
-*                          Last modified: 31/07/2020                     *
-* Returns the area enclosed by the hull, despite the presence of smaller *
-* internal domains. We depart from the cluster labelling site (smaller   *
-* index), and the initial contribution to the area is L+1. Then we   *
-* attempt to walk along the left, front, right or backward directions.   *
-* The incoming (backward) direction is only accepted if it's not         *
-* possible to go on the other directions. We choose the height of the    *
-* initial size as 10*L and update the height along the walk.         *
-* Percolating clusters are not taken into account since the walls are    *
-* disconnected in that case. The area is also updated along the walk     *
-* using  the following table (the column shows the precedent step):      *
-*                                                                        *
-*              up     right    down   left                               *
-*  up (0)       0      h+1      h+1     0                                *
-*  right (3)    0      h+1      -h      1                                *
-*  down (2)    -h      0        0      -h                                *
-*  left (1)    -h      1        0      h+1                               *
-*                                                                        *
-*                                                                        *
-*************************************************************************/
-int biasedwalk(int qual, int *lab)
-
-{
-int i=0,y;
-int area;
-int dir=0,old,ok,endpoint=1;
-int num_visited=0;
-long unsigned int *visited;
-visited = jmalloc(N*sizeof(int));
-
-/* At first, we should find the starting point for our walk around the hull.
-Some domains may cross the horizontal border, and the label site will not be
-the top-leftmost site, so we have to find it, starting from the bottom layer up: */
-if (qual<L) 
-   {
-    ok=0;
-    y = up[0];
-    while (!ok)
-          {
-           for (i=0; i<L; ++i)
-               if (lab[i+y]==lab[qual]) break;
-           if (i==L) ok=1;
-                    else {
-                          qual = y+i;
-                          y = up[y];
-                         }
-          }
-   }
-/* but perhaps the domain also crosses the vertical border, so we try to find an initial
-site more to the left (not necessarily the leftmost): */
-while (lab[qual]==lab[left[qual]]) qual = left[qual];
-
-y = 10*L; /* the factor 10 is arbitrary, but should be at least 2 */
-area = y + 1;
-
-/* First check whether the starting point has one or two branches going out. If there
-   are two branches connected by the starting point, the configuration shoulbe be:  11
-                                                                                    10
-   The walk will first go through the horizontal branch and, in order to go to the down
-   branch it should pass over the initial site, but we should not stop the walk there. 
-   To do this, we set endpoint=0. When the walk returns from the horizontal branch, we 
-   set it to 1, so the walk can stop the next time it visits the starting point. Notice
-   however that the horizontal branch may close the loop and join the down one without
-   passing through the starting point. For example:  111
-                                                     101
-                                                     111                              */
-if ((lab[right[qual]]==lab[qual]) && (lab[down[qual]]==lab[qual]) &&
-    (lab[down[right[qual]]]!=lab[qual]))
-   endpoint = 0;
-
-/* from the starting point, choose the direction to move, there are just 2 possibilities
-(from the way we choose it): */
-if (lab[right[qual]]==lab[qual]) 
-   {
-    dir = 3; 
-    i = right[qual];
-    visited[0] = up[qual];
-   }
-   else if (lab[down[qual]]==lab[qual]) 
-           {
-            dir = 2; 
-            i = down[qual]; 
-            --y;
-	    visited[0] = right[qual];
-           }
-num_visited = 1;
-
-/* start the walk around the cluster, clockwise: */
-old = dir;
-
-while ((i!=qual) || ((!endpoint)&&(dir!=0))) 
-/* while the walk doesn't return to the starting point, or if it returns, it can continue to the other branch */
-   {
-    if (i==qual) endpoint = 1; /* next time it returns, the walk is over */
-    ok = 0;
-    dir = (dir+1)%4;  /* from the incoming direction, try left first */
-    while (!ok) /* from the incoming direction: try right, in front, left and backwards */
-      {
-       switch (dir)
-	 {
-	  case 0: if (lab[up[i]]==lab[i]) {
-	                                   ok = 1; 
-					   i = up[i]; 
-					   area += delta(old,dir,y); 
-					   ++y; 
-	                                  }
-	          else {
-                        visited[num_visited]=up[i];
-		        ++num_visited;
-                       }
-		  break;
-	  case 1: if (lab[left[i]]==lab[i]) {
-	                                     ok = 1; 
-					     i = left[i];
-					     area += delta(old,dir,y); 
-	                                    }
-                  else {
-		        visited[num_visited]=left[i];
-		        ++num_visited;
-                       }
-		  break;
-	  case 2: if (lab[down[i]]==lab[i]) {
-                                             ok = 1; 
-					     i = down[i];
-					     area += delta(old,dir,y); 
-					     --y;
-	                                    }
-                  else {
-		        visited[num_visited]=down[i];
-		        ++num_visited;
-                       }
-		  break;
-	  case 3: if (lab[right[i]]==lab[i]) {
-                                              ok = 1;
-					      i = right[i];
-					      area += delta(old,dir,y); 
-	                                     }
-                  else {
-   	                visited[num_visited]=right[i];
-		        ++num_visited;
-                       }
-		  break;
-	 }
-       if (ok==0) dir = (dir + 3)%4;
-      }
-    old = dir;
-   }
-
-if (dir==1) area -= y;
-
-if (lab[right[i]]!=lab[i]) { /* add the surface sites around the first/last site */
-                            visited[num_visited]=right[i];
-		            ++num_visited;
-                           }
-if (lab[left[i]]!=lab[i]) {
-                           visited[num_visited]=left[i];
-		           ++num_visited;
-                          }
-if (lab[down[i]]!=lab[i]) {
-                           visited[num_visited]=down[i];
-		           ++num_visited;
-                          }
-if (lab[up[i]]!=lab[i]) {
-                         visited[num_visited]=up[i];
-	                 ++num_visited;
-                        }
-hull_perimeter = uniq(visited,num_visited);
-free(visited);
-
-return area;
-}
-
-
-int delta(int i, int j, int hh)
-{
-switch (i)
-   {
-    case 0: switch (j)
-              {
-	      case 0: return 0;
-	      case 1: return 0;
-	      case 2: return (hh + 1);
-	      case 3: return (hh + 1);
-	      }
-   case 1: switch (j)
-              {
-	      case 0: return (-hh);
-	      case 1: return (-hh);
-	      case 2: return 0;
-	      case 3: return 1;
-	      }
-   case 2: switch (j)
-              {
-	      case 0: return (-hh);
-	      case 1: return (-hh);
-	      case 2: return 0;
-	      case 3: return 0;
-	      }
-   case 3: switch (j)
-              {
-	      case 0: return 0;
-	      case 1: return 1;
-	      case 2: return (hh + 1);
-	      case 3: return (hh + 1);
-	      }
-   default: printf("Wrong situation!\n"); exit(0);
-   }
- return 1;
-}
 
 /**************************************************************
  *               Check for duplicate file                  

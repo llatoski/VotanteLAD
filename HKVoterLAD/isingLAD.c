@@ -113,19 +113,18 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  #if(DEBUG==0)
-    #if(SEED==0)
-      seed = time(0);
-      if (seed%2==0) ++seed;
-    #else
-      seed = SEED;
-    #endif
+  #if(SEED==0)
+    seed = time(0);
   #else
-      seed = 1111111111;
+    seed = SEED;
   #endif
   
   #if((SNAPSHOTS==0)&&(VISUAL==0))
     openfiles(); 
+  #else
+    #if(DEBUG==1)
+      seed = 1111111111;
+    #endif
   #endif
 
 
@@ -136,6 +135,9 @@ int main(void){
 
   for (int j=0;j<=MCS+1;j++)  {
     #if(VISUAL==1)
+      if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
+        break;
+      }
       visualize(j,seed);
       sweep();
     #else
@@ -773,8 +775,7 @@ bool exists(const char *fname){
 void openfiles(void) {
   char teste[250];
 
-  sprintf(root_name,"ising-L%d",L);
-
+  sprintf(root_name,"DATAising-L%d",L);
   unsigned long identifier = seed;
 
   #if(DEBUG==0)
