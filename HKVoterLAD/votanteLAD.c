@@ -42,7 +42,7 @@
  ***************************************************************/
 
 #define N          (L*L)  //Lattice volume
-#define MCS         100000000 //Max evolution time
+#define MCS         1E6 //Max evolution time
 #define THRESHOLD   1. //Certainty's treshold
 #define MEASURES    40
 #define ALPHA       1.  //Transiten probability 1
@@ -483,9 +483,9 @@ void visualize(int _j,unsigned long _seed) {
     lat2eps_set_color(3,0xC2C2C2); // white gray
     lat2eps_set_color(4,0xFF0000); // red
     lat2eps_set_color(5,0x0000FF); // blue
-    lat2eps_set_color(6,0xff4545); // gray red
-    lat2eps_set_color(7,0x81C2EF); // gray blue
-
+    lat2eps_set_color(6,0xFF9090); // gray red
+    lat2eps_set_color(7,0x90C2FF); // gray blue
+    
     for(l=0; l<N; l++) {
       if(spin[l]==1) {
         if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,4);

@@ -7,17 +7,11 @@
  *                    OBRIGATORY DEFINITIONS
  **************************************************************/
 // -D L="LATTICE_SIZE"
-// -D DETA="ETA_INCREMENT"
 
 /***************************************************************
  *                     OPTIONAL DEFINITIONS
  **************************************************************/
-// -DNBINARY [non binary case]
-// -DRESET  [full reset case]
-// -DGRESET [gamma reset case]
-// -DINTRANS [intrans case]
 
-// -DSPEEDTEST [sweep and measure speed test]
 // -DDEBUG [debug program]
 // -DVISUAL [live gif of the evolution]
 // -DSNAPSHOTS -I ~/VotanteLAD/liblat2eps/ -llat2eps [snapshots of the system]
@@ -43,8 +37,7 @@
  ***************************************************************/
 
 #define N          (L*L)  //Lattice volume
-#define MCS         1000000 //Max evolution time
-#define THRESHOLD   1. //Certainty's treshold
+#define MCS         1E6 //Max evolution time
 #define MEASURES    40
 #define ALPHA       1.  //Transiten probability 1
 #define BETA        1.  //Transiten probability 2
@@ -54,15 +47,7 @@
  *                            SETTINGS 
  ***************************************************************/
 
-#ifdef RESET
-  #define RESET       1 
-#endif
-#ifdef GRESET
-  #define RESET       2
-#endif
-
 #define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
-#define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
 
 /***************************************************************
  *                            FUNCTIONS                       
@@ -71,14 +56,20 @@
 void initialize(void); 
 void openfiles(void); 
 void sweep(void); 
-void visualize(int,unsigned long); 
+void visualize(double,unsigned long); 
 void states(void); 
 void measures1(void); 
 void measures2(void);
+void listremove(int);
+void listinclude(int);
+void single_update(int);
+void updatelist(int);
 #ifdef SNAPSHOTS
   void snap(void);  
 #endif
 void hoshen_kopelman(void);
+int biasedwalk(int qual, int *lab);
+int delta(int i, int j, int hh);
 void connections(int,int);
 int percolates2d(int);
 bool exists(const char*);
@@ -89,79 +80,67 @@ bool probcheck(double);
  **************************************************************/
 
 FILE *fp1,*fp2;
-int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
-int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
-int probperc0,probperc1;
+int *spin,*list,*listaux,**neigh,*memory,*measures,*right,*left,*up, *down, sum, sumz, activesum;
+int *siz, *label, *his, *qt, cl1, numc, mx1, mx2,CONT,LINKS;
+int NACTIVE,probperc0,probperc1;
+int hull_perimeter;
+char root_name[200];
 unsigned long seed;
-double *certainty;
+double tempo;
 
 /***************************************************************
  *                          MAIN PROGRAM  
  **************************************************************/
 int main(void){
 
-  #if(SEED==0)
-    seed = time(0);
-  #else
-    seed = SEED;
-  #endif
-  
-  #if(SNAPSHOTS==0 && VISUAL==0)
-    openfiles(); 
-    
-  #else
-    #if(DEBUG==1)
-      seed = 1111111111;
+  #if(DEBUG==0)
+    #if(SEED==0)
+      seed = time(0);
+      if (seed%2==0) ++seed;
+    #else
+      seed = SEED;
     #endif
+  #else
+      seed = 1111111111;
   #endif
+
+  openfiles(); 
+
+
 
   int k=0;
   initialize();
-
-  for (int j=0;j<=MCS+1;j++)  {
-    #if(VISUAL==1)
-      visualize(j,seed);
-      sweep();
-    #else
-      if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
+  int contagem=0;
+  while(tempo <= MCS){
+    if( NACTIVE == 0 ){
         states();
         hoshen_kopelman();
-        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+        fprintf(fp1,"%.8f %.8f %.8f %.8f %.8f %d %.8f %d %.8f %d\n",tempo,(double)sum/CONT,(double)activesum/LINKS,(double)numc/CONT,(double)mx1/CONT,probperc0,(double)mx2/CONT,probperc1,(double)qt[0]/CONT,NACTIVE);
+        fflush(fp1);
         while(measures[k]!=0){
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          fprintf(fp1,"%.8f %.8f %.8f %.8f %.8f %d %.8f %d %.8f %d\n",(double)measures[k],(double)sum/CONT,(double)activesum/LINKS,(double)numc/CONT,(double)mx1/CONT,probperc0,(double)mx2/CONT,probperc1,(double)qt[0]/CONT,NACTIVE);
+          fflush(fp1);
           k++;
         }           
         break;
+    }
+    if (tempo >= measures[k]) {  
+      states();
+      hoshen_kopelman();
+      fprintf(fp1,"%.8f %.8f %.8f %.8f %.8f %d %.8f %d %.8f %d\n",tempo,(double)sum/CONT,(double)activesum/LINKS,(double)numc/CONT,(double)mx1/CONT,probperc0,(double)mx2/CONT,probperc1,(double)qt[0]/CONT,NACTIVE);
+      fflush(fp1);
+      k++;
+    }
+    int agent = FRANDOM*NACTIVE;
+    int site = list[agent];
+    //printf("Atualizando agente %d (de %d ativos) localizado no sitio %d com spin %d\n",agent,NACTIVE,site,spin[site]);
+    #if(VISUAL==1)
+      if(tempo>contagem){
+        visualize(tempo,seed);
+        contagem++;
       }
-      if (measures[k]==j) {  
-        #if(SNAPSHOTS==1)
-          snap();   
-          k++;        
-        #else  
-          #if(SPEEDTEST==1)
-            clock_t t=clock();
-          #endif
-          states();
-          hoshen_kopelman();
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
-          k++;
-          #if(SPEEDTEST==1)
-            t=clock()-t;
-            double time_taken = ((double)t)/CLOCKS_PER_SEC;
-            printf("one measure: %fs\n",time_taken);
-          #endif
-        #endif
-      }
-      #if(SPEEDTEST==1)
-        clock_t t=clock();
-        sweep();
-        t=clock()-t;
-        double time_taken = ((double)t)/CLOCKS_PER_SEC;
-        printf("onesweep: %fs\n",time_taken);
-      #else
-        sweep();
-      #endif
     #endif
+    single_update(site);
   }
 
   #if(SNAPSHOTS==0)
@@ -181,53 +160,46 @@ void initialize(void) {
   neigh = (int**)malloc(N*sizeof(int*));
   memory = malloc(N*sizeof(int));
   measures = malloc(MCS*sizeof(int));
-  zealot = malloc(N*sizeof(int));
   right = malloc(N*sizeof(int));
   left = malloc(N*sizeof(int));
   up = malloc(N*sizeof(int));
   down = malloc(N*sizeof(int));
-  certainty = malloc(N*sizeof(double));
-
-    #if(NBINARY==0)
-      qt = malloc(2*sizeof(int));
-    #else
-      qt = malloc(N*sizeof(int));
-    #endif
+  list = malloc(N*sizeof(int));
+  listaux = malloc(N*sizeof(int));
+  #if(NBINARY==0)
+    qt = malloc(2*sizeof(int));
+  #else
+    qt = malloc(N*sizeof(int));
+  #endif
 
   for(int i=0; i<N; i++){
     neigh[i] = (int*)malloc(4*sizeof(int));
     #if(NBINARY==1)
-      qt[n] = 0;
+      qt[i] = 0;
     #endif
   }
-  int k;
-  #if(WALL==0)
-    for(int n=0; n<N; n++) {
-      certainty[n] = 1;
-      zealot[n] = 1;
-      memory[n] = 0;
-      double a = pow(abs(n%L - L/2),2);
-      double b = pow(abs(n/L - L/2),2);
-      if( ( a + b ) <= pow(2,R) ) {
-        k=1;
-      }
-      else k=0;
+
+  CONT=0;
+  for(int n=0; n<N; n++) { 
+    double RAND = FRANDOM;
+    memory[n] = 0;
+    if(RAND<=RHO){      
+      int k=FRANDOM*2;
       spin[n] = k*2 - 1; 
       qt[k]++;
-    } 
-  #else
-    for(int n=0; n<N; n++) {
-      certainty[n] = 0;
-      zealot[n] = 1;
-      memory[n] = 0;
-      if( n <= N/2 ) {
-        k=0;
-      }
-      else k=1;
-      spin[n] = k*2 - 1; 
-      qt[k]++;
-    } 
-  #endif
+      CONT++;
+    }
+    else {
+      spin[n] = 0;
+    }
+  }
+  #if(VISUAL==0)
+    fprintf(fp1,"# Agents: %d\n",CONT);
+    fprintf(fp1,"# Time Persistence Active Clusters Big1 Perc1 Big2 Perc2 qt[0]\n");
+    fprintf(fp1,"\n\n");
+    fflush(fp1);
+  #endif 
+
   for (int i = 0; i < N; i++) {    
     neigh[i][0] = (i+1)%L + (i/L)*L; //right
     neigh[i][1] = (i-1+L)%L + (i/L)*L; //left
@@ -239,6 +211,32 @@ void initialize(void) {
     down[i] = neigh[i][3];
   }
 
+  LINKS=0;
+  NACTIVE=0;
+  for (int i=0; i<N; i++) {
+    listaux[i]=-1;
+    int relative=0;
+    if(spin[i]!=0){
+      for(int j=0;j<4;j++)if(spin[neigh[i][j]] == -spin[i])relative=1;
+      if (spin[right[i]]!=0){
+        LINKS++;
+        if(spin[right[i]]!=spin[i]){
+          activesum++;
+        }
+      }
+      if (spin[down[i]]!=0){
+        LINKS++;
+        if(spin[down[i]]!=spin[i]){
+          activesum++;
+        }
+      }
+      if(relative==1){
+        list[NACTIVE]=i;
+        listaux[i]=NACTIVE;
+        NACTIVE++;
+      }
+    }
+  }
   #if(LOGSCALE==1)
     measures1(); 
   #else
@@ -246,37 +244,35 @@ void initialize(void) {
   #endif
 
 }
-
 /****************************************************************
- *               MCS routine
+ *               Single_Update
  ***************************************************************/
-void sweep(void) {
-
-  for (int n=0; n<N; n++) {
-    int site = FRANDOM*N;
-    int dir = FRANDOM*4;
-    int neighbour = neigh[site][dir];
-    int focal = spin[site]; 
-    if(spin[site]!=spin[neighbour]) {
-      if(zealot[site] == 0){
-        memory[site]=1;
-        qt[(spin[site] + 1 )/2]--;
-        spin[site] = spin[neighbour];
-        qt[(spin[neighbour] + 1 )/2]++;
-      }
-      certainty[neighbour] += (1-((spin[neighbour] + 1 )/2))*DETA + ((spin[neighbour] + 1 )/2)*DETA*FATOR;;
-      certainty[site] = 0;
-      if(certainty[site]<=THRESHOLD)zealot[site]=0;
-      if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-      continue;
-    }
-    else{
-      certainty[site] += (1-(spin[site] + 1)/2)*DETA + ((spin[site] + 1 )/2)*DETA*FATOR;
-      certainty[neighbour] += (1-((spin[neighbour] + 1 )/2))*DETA + ((spin[neighbour] + 1 )/2)*DETA*FATOR;
-      if(certainty[site]>=THRESHOLD)zealot[site]=1;
-      if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-      continue;
-    }
+void single_update(int _site) {
+  //Opinion dynamics    
+  int dir = FRANDOM*4;
+  int neighbour = neigh[_site][dir];
+  while(spin[neighbour]==0){
+    dir = FRANDOM*4;
+    neighbour = neigh[_site][dir];
+  }
+  if(spin[_site]==-spin[neighbour]) {
+    int INTERFANTES=0;
+    if(spin[up[_site]]==-spin[_site])INTERFANTES++;
+    if(spin[right[_site]]==-spin[_site])INTERFANTES++;
+    if(spin[down[_site]]==-spin[_site])INTERFANTES++;
+    if(spin[left[_site]]==-spin[_site])INTERFANTES++;
+    memory[_site]=1;
+    qt[(spin[_site] + 1 )/2]--;
+    spin[_site] = spin[neighbour];
+    qt[(spin[neighbour] + 1 )/2]++;
+    int INTERFDEPOIS=0;
+    if(spin[up[_site]]==-spin[_site])INTERFDEPOIS++;
+    if(spin[right[_site]]==-spin[_site])INTERFDEPOIS++;
+    if(spin[down[_site]]==-spin[_site])INTERFDEPOIS++;
+    if(spin[left[_site]]==-spin[_site])INTERFDEPOIS++;
+    activesum+=(INTERFDEPOIS-INTERFANTES);
+    tempo+=1./NACTIVE;
+    updatelist(_site);
   }
 }
 
@@ -284,25 +280,55 @@ void sweep(void) {
  *               Check states numbers
  ***************************************************************/
 void states(void) {
-  #if(NBINARY==0)  
-    sum=N;
-  #else
-    sum=0;
-  #endif
-  sumz=0;
-  activesum=0;
+  sum=CONT;
+  LINKS=0;
+  // activesum=0;
   for (int i=0; i<N; i++) {
-    #if(NBINARY==0)
-      if (memory[i]!=0) sum--;
-    #else
-      if (memory[i]>=0) sum++;
-    #endif
-    
-    if (zealot[i]!=0) sumz++;
-    if (spin[right[i]]!=spin[i]) activesum++;
-    if (spin[down[i]]!=spin[i]) activesum++;
+    if(memory[i]!=0)sum--;
+    if(spin[i]!=0){
+      if (spin[right[i]]!=0)LINKS++;          
+      if (spin[down[i]]!=0)LINKS++;
+    }
+    //printf("%d\n",sum);
   }
 }
+
+/**************************************************************
+ *              List management                  
+ *************************************************************/
+void listremove(int _site){
+  int agent = listaux[_site];
+  list[agent] = list[NACTIVE];
+  listaux[list[agent]]=agent;
+  listaux[_site]=-1;
+  NACTIVE--;
+}
+
+void listinclude(int _site){
+  NACTIVE++;
+  list[NACTIVE] = _site;
+  listaux[_site] = NACTIVE;
+}
+
+void updatelist(int _site){
+  int cont=0;
+  int cont2;
+  for(int i=0; i<4; i++){
+    int viz = neigh[_site][i];
+    if(spin[viz] == -spin[_site])cont=1;
+    cont2=0;
+    if(spin[viz]!=0){
+      for(int j=0; j<4; j++){
+        int vizviz = neigh[viz][j];
+        if(spin[vizviz] == -spin[viz])cont2=1;
+      }
+      if(listaux[viz]==-1 && cont2==1)listinclude(viz);
+      if(listaux[viz]!=-1 && cont2==0)listremove(viz); 
+    }
+  }
+  if(cont == 0)listremove(_site); 
+}
+
  /**************************************************************
  *                       Measures Vector     // Medidas Logarítmicas
  *************************************************************/
@@ -319,89 +345,24 @@ void measures1(void){
   return;
 }
 
- /**************************************************************
- *                       Measures Vector    // Número de medidas
- *************************************************************/
-void measures2(void){
-  int m=0;
-  measures[0]=0;
-  double temp = pow((double)MCS,1.0/(MEASURES-1));
-  for(int i=0;i<MEASURES;i++){
-    measures[i] = (int)pow(temp,(double) i);
-    if(measures[i]<=m)measures[i]=m+1;
-    m=measures[i];
-  }
-  return;
-}
-
-/**************************************************************
- *                      Teste
- *************************************************************/
-
-bool probcheck(double _ALPHA) {
-  double r = FRANDOM;
-  if(r<=_ALPHA)return true;
-  else return false;
-}
 
 /**************************************************************
  *                       Vizualização                   
  *************************************************************/
-void visualize(int _j,unsigned long _seed) {
+void visualize(double _j,unsigned long _seed) {
   int l;
-  printf("pl '-' matrix w image t 'time = %d seed = %ld m/m0 = %.8f'\n",_j,_seed, (double)(2*qt[0]- N)/N);
+  printf("pl '-' matrix w image t 'time = %.8f seed = %ld'\n",_j,_seed);
   for(l = N-1; l >= 0; l--) {
-    #if(NBINARY==0)
-      if(zealot[l]==1)printf("%d ", spin[l]+1);
-      else printf("%d ", spin[l]);
-    #else
-      if(zealot[l]==1)printf("%d ", -spin[l]);
-      else printf("%d ", spin[l]);
-    #endif
+    if(spin[l]!=0){  
+      printf("%d ", spin[l]);
+    }
+    else{
+      printf("%d ", -2);
+    }
     if( l%L == 0 ) printf("\n");
   }
   printf("e\n");
 }
-
-#ifdef SNAPSHOTS
-/**************************************************************
- *                       Snapshots                   
- *************************************************************/
-  void snap(void) {
-    int l;
-    int identifier = 0;
-    char teste[100];
-
-    lat2eps_init(L,L);
-    lat2eps_set_color(0,0x00000); //black
-    lat2eps_set_color(1,0xFFFFFF); //white
-    lat2eps_set_color(2,0x333434); // black gray
-    lat2eps_set_color(3,0xC2C2C2); // white gray
-    lat2eps_set_color(4,0xFF0000); // red
-    lat2eps_set_color(5,0x0000FF); // blue
-    lat2eps_set_color(6,0xff4545); // gray red
-    lat2eps_set_color(7,0x81C2EF); // gray blue
-
-    for(l=0; l<N; l++) {
-      if(spin[l]==1) {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,4);
-        else lat2eps_set_site(l%L,l/L,6);
-      }
-      else {
-        if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,5);
-        else lat2eps_set_site(l%L,l/L,7);
-      } 
-    }
-
-    snprintf(teste,sizeof teste,"sd%ld[%d].eps",seed,identifier);
-    while(exists(teste)==true) {
-      identifier++;
-      snprintf(teste,sizeof teste,"sd%ld[%d].eps",seed,identifier);
-    }
-    lat2eps_gen_eps(teste,0,0,L,L,1,3);
-    lat2eps_release();
-  }
-#endif
 
 
 /**************************************************************
@@ -429,18 +390,23 @@ void hoshen_kopelman(void) {
   }
 
   for (i=0;i < N; ++i) {
-    if (spin[i]==spin[right[i]]) connections(i,right[i]);
-    if (spin[i]==spin[down[i]]) connections(i,down[i]);
+    if(spin[i]!=0){
+      if (spin[i]==spin[right[i]]) connections(i,right[i]);
+      if (spin[i]==spin[down[i]]) connections(i,down[i]);
+    }
+
   }
 
   for (i=0; i<N; ++i) {
-    j = i;
-    while (label[j] != j)
-    {
-      j = label[j];
+    if(spin[i]!=0){
+      j = i;
+      while (label[j] != j)
+      {
+        j = label[j];
+      }
+      ++siz[label[j]];                        
+      label[i] = label[j];                    
     }
-    ++siz[label[j]];                        
-    label[i] = label[j];                    
   }
 
   temp1 = 0;                                 
@@ -531,12 +497,6 @@ void connections(int i,int j) {
 
 }
 
-/*****************************************************************************
- *                            	   Comparison (greater -> smaller)            *
- ****************************************************************************/
-int comp (const void *x, const void *y) {
-	return - (int) (*(int *)x - *(int*)y);
-}
 
 /**************************************************************
  *               Check for duplicate file                  
@@ -555,25 +515,31 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[100];
-  char teste[100];
+  char output_file1[300];
+  char teste[250];
+  
+  sprintf(root_name,"voterdillution_lg%d_rho%.2f_mob%.2f",L,RHO,MOB);
+
   unsigned long identifier = seed;
-
-  snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-  while(exists(teste)==true) {
-    identifier++;
-    snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-  }
-
-  #if(DEBUG==1)
-    seed=1111111111;
-  #else
-    seed=identifier;
+  #if(DEBUG==0)
+    sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    while(exists(teste)==true) {
+      identifier+=2;
+      sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    }
   #endif
+  sprintf(teste,"%s_sd%ld",root_name,identifier);
+  
+  seed=identifier;
 
-  sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
+  sprintf(output_file1,"%s_1.dsf",teste);
   fp1 = fopen(output_file1,"w");
+  fprintf(fp1,"# Pure Voter Model 2D Main Output\n");
+  fprintf(fp1,"# Seed: %ld\n",seed);
+  fprintf(fp1,"# Linear size: %d\n",L);
   fflush(fp1);
-  return;
 
+  return;
+  
 }
+

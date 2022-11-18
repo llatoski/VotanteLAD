@@ -136,7 +136,7 @@ int main(void){
       if (measures[k]==j) {  
         #if(SNAPSHOTS==1)
           snap();   
-          k++;        
+          k++;   
         #else  
           #if(SPEEDTEST==1)
             clock_t t=clock();
@@ -220,7 +220,10 @@ void initialize(void) {
       certainty[n] = 0;
       zealot[n] = 1;
       memory[n] = 0;
-      if( n <= N/2 ) {
+      if( n < 2*L) {
+        k=0;
+      }
+      else if( n >= N/2+8*L) {
         k=0;
       }
       else k=1;
@@ -374,7 +377,7 @@ void visualize(int _j,unsigned long _seed) {
       }
       else {
         if(certainty[l]>=1)lat2eps_set_site(l%L,l/L,5);
-        else lat2eps_set_site(l%L,l/L,7);
+        else lat2eps_set_site(l%L,l/L,5);
       } 
     }
 

@@ -17,7 +17,6 @@
 // -DGRESET [gamma reset case]
 // -DINTRANS [intrans case]
 
-// -DSPEEDTEST [sweep and measure speed test]
 // -DDEBUG [debug program]
 // -DVISUAL [live gif of the evolution]
 // -DSNAPSHOTS -I ~/VotanteLAD/liblat2eps/ -llat2eps [snapshots of the system]
@@ -43,7 +42,7 @@
  ***************************************************************/
 
 #define N          (L*L)  //Lattice volume
-#define MCS         1000000 //Max evolution time
+#define MCS         100000000 //Max evolution time
 #define THRESHOLD   1. //Certainty's treshold
 #define MEASURES    40
 #define ALPHA       1.  //Transiten probability 1
@@ -60,8 +59,16 @@
 #ifdef GRESET
   #define RESET       2
 #endif
+#if(INTRANS==0)
+  #define INTRANS     0
+#endif
+#if(NBINARY==0)
+  #define BINARY      1
+#else
+  #define BINARY      0
+#endif
 
-#define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
+#define LOGSCALE    0 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
 #define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
 
 /***************************************************************
@@ -79,6 +86,8 @@ void measures2(void);
   void snap(void);  
 #endif
 void hoshen_kopelman(void);
+int biasedwalk(int qual, int *lab);
+int delta(int i, int j, int hh);
 void connections(int,int);
 int percolates2d(int);
 bool exists(const char*);
@@ -92,6 +101,8 @@ FILE *fp1,*fp2;
 int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
 int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
+int hull_perimeter;
+char root_name[200];
 unsigned long seed;
 double *certainty;
 
@@ -100,20 +111,22 @@ double *certainty;
  **************************************************************/
 int main(void){
 
-  #if(SEED==0)
-    seed = time(0);
-  #else
-    seed = SEED;
-  #endif
-  
-  #if(SNAPSHOTS==0 && VISUAL==0)
-    openfiles(); 
-    
-  #else
-    #if(DEBUG==1)
-      seed = 1111111111;
+  #if(DEBUG==0)
+    #if(SEED==0)
+      seed = time(0);
+      if (seed%2==0) ++seed;
+    #else
+      seed = SEED;
     #endif
+  #else
+      seed = 1111111111;
   #endif
+
+  
+  #if((SNAPSHOTS==0)&&(VISUAL==0))
+    openfiles(); 
+  #endif
+
 
   int k=0;
   initialize();
@@ -126,9 +139,9 @@ int main(void){
       if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
         states();
         hoshen_kopelman();
-        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,qt[0]);
         while(measures[k]!=0){
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,qt[0]);
           k++;
         }           
         break;
@@ -138,29 +151,13 @@ int main(void){
           snap();   
           k++;        
         #else  
-          #if(SPEEDTEST==1)
-            clock_t t=clock();
-          #endif
           states();
           hoshen_kopelman();
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,qt[0]);
           k++;
-          #if(SPEEDTEST==1)
-            t=clock()-t;
-            double time_taken = ((double)t)/CLOCKS_PER_SEC;
-            printf("one measure: %fs\n",time_taken);
-          #endif
         #endif
       }
-      #if(SPEEDTEST==1)
-        clock_t t=clock();
-        sweep();
-        t=clock()-t;
-        double time_taken = ((double)t)/CLOCKS_PER_SEC;
-        printf("onesweep: %fs\n",time_taken);
-      #else
-        sweep();
-      #endif
+      sweep();
     #endif
   }
 
@@ -197,37 +194,25 @@ void initialize(void) {
   for(int i=0; i<N; i++){
     neigh[i] = (int*)malloc(4*sizeof(int));
     #if(NBINARY==1)
-      qt[n] = 0;
+      qt[i] = 0;
     #endif
   }
-  int k;
-  #if(WALL==0)
-    for(int n=0; n<N; n++) {
-      certainty[n] = 1;
-      zealot[n] = 1;
-      memory[n] = 0;
-      double a = pow(abs(n%L - L/2),2);
-      double b = pow(abs(n/L - L/2),2);
-      if( ( a + b ) <= pow(2,R) ) {
-        k=1;
-      }
-      else k=0;
+
+  for(int n=0; n<N; n++) { 
+    certainty[n] = 0;
+    zealot[n] = 0;
+    memory[n] = 0;
+
+    #if(NBINARY==0)
+      int k=FRANDOM*2;
       spin[n] = k*2 - 1; 
       qt[k]++;
-    } 
-  #else
-    for(int n=0; n<N; n++) {
-      certainty[n] = 0;
-      zealot[n] = 1;
-      memory[n] = 0;
-      if( n <= N/2 ) {
-        k=0;
-      }
-      else k=1;
-      spin[n] = k*2 - 1; 
-      qt[k]++;
-    } 
-  #endif
+    #else
+      spin[n] = n;
+    #endif
+
+  } 
+
   for (int i = 0; i < N; i++) {    
     neigh[i][0] = (i+1)%L + (i/L)*L; //right
     neigh[i][1] = (i-1+L)%L + (i/L)*L; //left
@@ -256,27 +241,146 @@ void sweep(void) {
     int site = FRANDOM*N;
     int dir = FRANDOM*4;
     int neighbour = neigh[site][dir];
-    int focal = spin[site]; 
-    if(spin[site]!=spin[neighbour]) {
-      if(zealot[site] == 0){
-        memory[site]=1;
-        qt[(spin[site] + 1 )/2]--;
-        spin[site] = spin[neighbour];
-        qt[(spin[neighbour] + 1 )/2]++;
+
+    #if(SIMPLIFIED==1)
+      if(spin[site]!=spin[neighbour]) {
+        if(zealot[site] == 0){
+
+          #if(NBINARY==0)
+            memory[site]=1;
+            qt[(spin[site] + 1 )/2]--;
+            spin[site] = spin[neighbour];
+            qt[(spin[neighbour] + 1 )/2]++;
+          #else
+            memory[spin[site]]--;
+            spin[site] = spin[neighbour];
+            memory[spin[site]]++;
+          #endif
+
+        }
+
+        certainty[neighbour] += DETA;
+
+        #if(RESET==2)
+          certainty[site] = certainty[site]/GAMMA;
+        #endif
+        #if(RESET==1)
+          certainty[site] = 0;
+        #endif
+        #if(RESET==0)
+          certainty[site] -= DETA;
+        #endif     
+
+        #if(INTRANS==0)
+          if(certainty[site]<=THRESHOLD)zealot[site]=0;
+        #endif
+
+        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
+        continue;
       }
-      certainty[neighbour] += (1-((spin[neighbour] + 1 )/2))*DETA + ((spin[neighbour] + 1 )/2)*DETA*FATOR;;
-      certainty[site] = 0;
-      if(certainty[site]<=THRESHOLD)zealot[site]=0;
-      if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-      continue;
-    }
-    else{
-      certainty[site] += (1-(spin[site] + 1)/2)*DETA + ((spin[site] + 1 )/2)*DETA*FATOR;
-      certainty[neighbour] += (1-((spin[neighbour] + 1 )/2))*DETA + ((spin[neighbour] + 1 )/2)*DETA*FATOR;
-      if(certainty[site]>=THRESHOLD)zealot[site]=1;
-      if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-      continue;
-    }
+      else{
+        certainty[site] += DETA;
+        certainty[neighbour] += DETA;
+        if(certainty[site]>=THRESHOLD)zealot[site]=1;
+        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
+        continue;
+      }
+    #else
+      bool acc1 = probcheck(ALPHA);
+      bool acc2 = probcheck(BETA);
+      if(spin[site]!=spin[neighbour]) {
+        if(zealot[site] == 0){
+          if(acc1==true) {
+
+            #if(NBINARY==0)
+              memory[site]=1;
+              spin[site] = spin[neighbour];
+            #else
+              memory[spin[site]]--;
+              spin[site] = spin[neighbour];
+              memory[spin[site]]++;
+            #endif
+
+            #if(RESET==2)
+              certainty[site] = certainty[site]/GAMMA;
+            #endif
+
+            #if(RESET==1)
+              certainty[site] = 0;
+            #endif
+
+            #if(RESET==0)
+              certainty[site] -= DETA;
+            #endif
+
+            certainty[neighbour] += DETA;
+            #if(INTRANS==0)
+              if(certainty[site]<=THRESHOLD)zealot[site]=0;
+            #endif
+            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
+
+          }
+          else{
+            certainty[site] += DETA;
+            certainty[neighbour] -= DETA;
+
+            #if(INTRANS==0)
+              if(certainty[neighbour]<=THRESHOLD)zealot[neighbour]=0;
+            #endif
+
+            if(certainty[site]>=THRESHOLD)zealot[site]=1;
+          }
+        }
+
+        else {
+          if (acc2==true) {
+
+            certainty[neighbour] += DETA;
+
+            #if(RESET==2)
+              certainty[site] = certainty[site]/GAMMA;
+            #endif
+
+            #if(RESET==1)
+              certainty[site] = 0;
+            #endif
+
+            #if(RESET==0)
+              certainty[site] -= DETA;
+            #endif
+            
+            #if(INTRANS==0)
+              if(certainty[site]<=THRESHOLD)zealot[site]=0;
+            #endif
+            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
+
+          }
+
+          else  {
+            certainty[site] -= DETA;
+            certainty[neighbour] += DETA;
+
+            #if(INTRANS==0)
+              if(certainty[site]<=THRESHOLD)zealot[site]=0;
+            #endif
+
+            if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
+
+          }
+
+        }
+
+      }
+
+      else{
+        certainty[site] += DETA;
+        certainty[neighbour] += DETA;
+        if(certainty[site]>=THRESHOLD)zealot[site]=1;
+        if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
+        continue;
+      }
+    #endif    
+
   }
 }
 
@@ -349,7 +453,7 @@ bool probcheck(double _ALPHA) {
  *************************************************************/
 void visualize(int _j,unsigned long _seed) {
   int l;
-  printf("pl '-' matrix w image t 'time = %d seed = %ld m/m0 = %.8f'\n",_j,_seed, (double)(2*qt[0]- N)/N);
+  printf("pl '-' matrix w image t 'time = %d seed = %ld'\n",_j,_seed);
   for(l = N-1; l >= 0; l--) {
     #if(NBINARY==0)
       if(zealot[l]==1)printf("%d ", spin[l]+1);
@@ -531,12 +635,6 @@ void connections(int i,int j) {
 
 }
 
-/*****************************************************************************
- *                            	   Comparison (greater -> smaller)            *
- ****************************************************************************/
-int comp (const void *x, const void *y) {
-	return - (int) (*(int *)x - *(int*)y);
-}
 
 /**************************************************************
  *               Check for duplicate file                  
@@ -555,25 +653,70 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[100];
-  char teste[100];
-  unsigned long identifier = seed;
+  char output_file1[300];
+  char teste[250];
 
-  snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-  while(exists(teste)==true) {
-    identifier++;
-    snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-  }
-
-  #if(DEBUG==1)
-    seed=1111111111;
-  #else
-    seed=identifier;
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==0))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==1))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==0)&&(RESET==2))
+    sprintf(root_name,"binarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==0))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==1))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==0)&&(NBINARY==1)&&(RESET==2))
+    sprintf(root_name,"nonbinarytrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==0))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==1))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==0)&&(RESET==2))
+    sprintf(root_name,"binaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==0))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-DETA%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==1))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-FULLRESET-DETA-%.5f",ALPHA,L,DETA);
+  #endif
+  #if((INTRANS==1)&&(NBINARY==1)&&(RESET==2))
+    sprintf(root_name,"nonbinaryintrans-ALPHA%.1f-L%d-GAMMA%.1f-DETA-%.5f",ALPHA,L,GAMMA,DETA);
   #endif
 
-  sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
+ unsigned long identifier = seed;
+  #if(DEBUG==0)
+    sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    while(exists(teste)==true) {
+      identifier+=2;
+      sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    }
+  #endif
+  sprintf(teste,"%s_sd%ld",root_name,identifier);
+  seed=identifier;
+
+  sprintf(output_file1,"%s_1.dsf",teste);
   fp1 = fopen(output_file1,"w");
+  fprintf(fp1,"# LAD Voter Model 2D Main Output\n");
+  fprintf(fp1,"# Seed: %ld\n",seed);
+  fprintf(fp1,"# Linear size: %d\n",L);
+  fprintf(fp1,"# Irreversible: %d\n",INTRANS);
+  fprintf(fp1,"# Incremento: %.6f\n",DETA);
+  fprintf(fp1,"# Binary: %d\n",BINARY);
+  fprintf(fp1,"# Reset (1 Full, 2 Gamma reset): %d\n",RESET);
+  fprintf(fp1,"# Time Persistence Zealots Active Clusters Big1 Perc1 Big2 Perc2\n");
+  fprintf(fp1,"\n\n");
   fflush(fp1);
+
   return;
 
 }

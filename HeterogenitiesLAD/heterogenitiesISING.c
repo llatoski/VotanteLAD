@@ -60,8 +60,16 @@
 #ifdef GRESET
   #define RESET       2
 #endif
+#if(INTRANS==0)
+  #define INTRANS     0
+#endif
+#if(NBINARY==0)
+  #define BINARY      1
+#else
+  #define BINARY      0
+#endif
 
-#define LOGSCALE    1 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
+#define LOGSCALE    0 // 0 --> measures logaritmically spaced, 1 --> measures in logscale.
 #define SIMPLIFIED  1 // 1 --> simplify the algorithm to alpha=beta=1 to avoid calculations
 
 /***************************************************************
@@ -71,14 +79,18 @@
 void initialize(void); 
 void openfiles(void); 
 void sweep(void); 
+void sweepCONT(void); 
 void visualize(int,unsigned long); 
 void states(void); 
 void measures1(void); 
 void measures2(void);
+void heterogenities(void);
 #ifdef SNAPSHOTS
   void snap(void);  
 #endif
 void hoshen_kopelman(void);
+int biasedwalk(int qual, int *lab);
+int delta(int i, int j, int hh);
 void connections(int,int);
 int percolates2d(int);
 bool exists(const char*);
@@ -89,9 +101,14 @@ bool probcheck(double);
  **************************************************************/
 
 FILE *fp1,*fp2;
-int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum;
+int *spin,**neigh,*memory,*measures,*zealot,*right,*left,*up, *down, sum, sumz, activesum,*heter;
 int *siz, *label, *his, *qt, cl1, numc, mx1, mx2;
 int probperc0,probperc1;
+int hull_perimeter;
+int het;
+double CONT;
+char root_name[200];
+char output_file1[300];
 unsigned long seed;
 double *certainty;
 
@@ -106,29 +123,44 @@ int main(void){
     seed = SEED;
   #endif
   
-  #if(SNAPSHOTS==0 && VISUAL==0)
+  #if((SNAPSHOTS==0)&&(VISUAL==0))
     openfiles(); 
-    
   #else
     #if(DEBUG==1)
       seed = 1111111111;
     #endif
   #endif
 
-  int k=0;
+
+  int k=1;
+  int auxmx1;
+  int teste;
   initialize();
 
+  CONT=0;
+  while(CONT<1){
+    states();
+    hoshen_kopelman();
+    heterogenities();
+    fprintf(fp1,"%.6f %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",CONT,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,het);
+    sweepCONT();
+  }
+  
   for (int j=0;j<=MCS+1;j++)  {
     #if(VISUAL==1)
+      if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
+        break;
+      }
       visualize(j,seed);
       sweep();
     #else
       if( ( qt[0]==0 ) | ( qt[1]==0 ) ){
         states();
         hoshen_kopelman();
-        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+        heterogenities();
+        fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,het);
         while(measures[k]!=0){
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",measures[k],(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,het);
           k++;
         }           
         break;
@@ -143,8 +175,17 @@ int main(void){
           #endif
           states();
           hoshen_kopelman();
-          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1);
+          heterogenities();
+          if(mx1==auxmx1){
+            fclose(fp1);
+            remove(output_file1);
+            teste=1;
+            sleep(5);
+            break;
+          }
+          fprintf(fp1,"%d %.8f %.8f %.8f %.8f %.8f %d %.8f %d %d\n",j,(double)sum/N,(double)sumz/N,(double)activesum/N,(double)numc/N,(double)mx1/N,probperc0,(double)mx2/N,probperc1,het);
           k++;
+          auxmx1=mx1;
           #if(SPEEDTEST==1)
             t=clock()-t;
             double time_taken = ((double)t)/CLOCKS_PER_SEC;
@@ -165,7 +206,9 @@ int main(void){
   }
 
   #if(SNAPSHOTS==0)
-  fclose(fp1);
+  if(teste!=1){
+    fclose(fp1);
+  }
   #endif
 
 }
@@ -200,34 +243,22 @@ void initialize(void) {
       qt[n] = 0;
     #endif
   }
-  int k;
-  #if(WALL==0)
-    for(int n=0; n<N; n++) {
-      certainty[n] = 1;
-      zealot[n] = 1;
-      memory[n] = 0;
-      double a = pow(abs(n%L - L/2),2);
-      double b = pow(abs(n/L - L/2),2);
-      if( ( a + b ) <= pow(2,R) ) {
-        k=1;
-      }
-      else k=0;
+
+  for(int n=0; n<N; n++) { 
+    certainty[n] = 0;
+    zealot[n] = 0;
+    memory[n] = 0;
+
+    #if(NBINARY==0)
+      int k=FRANDOM*2;
       spin[n] = k*2 - 1; 
       qt[k]++;
-    } 
-  #else
-    for(int n=0; n<N; n++) {
-      certainty[n] = 0;
-      zealot[n] = 1;
-      memory[n] = 0;
-      if( n <= N/2 ) {
-        k=0;
-      }
-      else k=1;
-      spin[n] = k*2 - 1; 
-      qt[k]++;
-    } 
-  #endif
+    #else
+      spin[n] = n;
+    #endif
+
+  } 
+
   for (int i = 0; i < N; i++) {    
     neigh[i][0] = (i+1)%L + (i/L)*L; //right
     neigh[i][1] = (i-1+L)%L + (i/L)*L; //left
@@ -251,34 +282,64 @@ void initialize(void) {
  *               MCS routine
  ***************************************************************/
 void sweep(void) {
-
-  for (int n=0; n<N; n++) {
+    for (int n=0; n<N; n++) {
     int site = FRANDOM*N;
-    int dir = FRANDOM*4;
-    int neighbour = neigh[site][dir];
-    int focal = spin[site]; 
-    if(spin[site]!=spin[neighbour]) {
-      if(zealot[site] == 0){
-        memory[site]=1;
-        qt[(spin[site] + 1 )/2]--;
-        spin[site] = spin[neighbour];
-        qt[(spin[neighbour] + 1 )/2]++;
-      }
-      certainty[neighbour] += (1-((spin[neighbour] + 1 )/2))*DETA + ((spin[neighbour] + 1 )/2)*DETA*FATOR;;
-      certainty[site] = 0;
-      if(certainty[site]<=THRESHOLD)zealot[site]=0;
-      if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-      continue;
+    int E1=0;
+    int E2=0;
+    int neighbour;
+    for(int i=0; i<4; i++){
+       neighbour = neigh[site][i];
+      if(spin[neighbour]==spin[site])E1++;
+      else E2++; 
     }
-    else{
-      certainty[site] += (1-(spin[site] + 1)/2)*DETA + ((spin[site] + 1 )/2)*DETA*FATOR;
-      certainty[neighbour] += (1-((spin[neighbour] + 1 )/2))*DETA + ((spin[neighbour] + 1 )/2)*DETA*FATOR;
-      if(certainty[site]>=THRESHOLD)zealot[site]=1;
-      if(certainty[neighbour]>=THRESHOLD)zealot[neighbour]=1;
-      continue;
+    if(E2>E1){
+      qt[(spin[site] + 1 )/2]--;
+      spin[site]=-spin[site];
+      qt[(spin[site] + 1 )/2]++;      
+      memory[site]=1;
+    }
+    else if(E2==E1){
+      if(FRANDOM<=0.5){
+      qt[(spin[site] + 1 )/2]--;
+      spin[site]=-spin[site];
+      qt[(spin[site] + 1 )/2]++;      
+      memory[site]=1;
+      }
     }
   }
 }
+
+/****************************************************************
+ *               MCS routine
+ ***************************************************************/
+void sweepCONT(void) {
+  int site = FRANDOM*N;
+  int E1=0;
+  int E2=0;
+  int neighbour;
+  for(int i=0; i<4; i++){
+      neighbour = neigh[site][i];
+    if(spin[neighbour]==spin[site])E1++;
+    else E2++; 
+  }
+  if(E2>E1){
+    qt[(spin[site] + 1 )/2]--;
+    spin[site]=-spin[site];
+    qt[(spin[site] + 1 )/2]++;      
+    memory[site]=1;
+  }
+  else if(E2==E1){
+    if(FRANDOM<=0.5){
+    qt[(spin[site] + 1 )/2]--;
+    spin[site]=-spin[site];
+    qt[(spin[site] + 1 )/2]++;      
+    memory[site]=1;
+    }
+  }
+  CONT+=1./N;
+}
+
+
 
 /****************************************************************
  *               Check states numbers
@@ -349,7 +410,7 @@ bool probcheck(double _ALPHA) {
  *************************************************************/
 void visualize(int _j,unsigned long _seed) {
   int l;
-  printf("pl '-' matrix w image t 'time = %d seed = %ld m/m0 = %.8f'\n",_j,_seed, (double)(2*qt[0]- N)/N);
+  printf("pl '-' matrix w image t 'time = %d seed = %ld'\n",_j,_seed);
   for(l = N-1; l >= 0; l--) {
     #if(NBINARY==0)
       if(zealot[l]==1)printf("%d ", spin[l]+1);
@@ -429,8 +490,8 @@ void hoshen_kopelman(void) {
   }
 
   for (i=0;i < N; ++i) {
-    if (spin[i]==spin[right[i]]) connections(i,right[i]);
-    if (spin[i]==spin[down[i]]) connections(i,down[i]);
+    if (spin[i]==spin[right[i]] && zealot[i]==zealot[right[i]]) connections(i,right[i]);
+    if (spin[i]==spin[down[i]] && zealot[i]==zealot[down[i]]) connections(i,down[i]);
   }
 
   for (i=0; i<N; ++i) {
@@ -538,6 +599,233 @@ int comp (const void *x, const void *y) {
 	return - (int) (*(int *)x - *(int*)y);
 }
 
+/*****************************************************************************
+ *                            	   Comparison (greater -> smaller)            *
+ ****************************************************************************/
+void heterogenities(void) {
+  het=0;
+  heter = malloc(N*sizeof(int));
+  for(int i=0; i<N; i++){
+    heter[siz[i]]=1;
+  }
+  for(int i=1; i<N; i++){
+    if(heter[i]==1)het++;
+  }
+  free(heter);
+}
+
+/*************************************************************************
+*                     Biased walks along the external hull               *
+*                          Last modified: 31/07/2020                     *
+* Returns the area enclosed by the hull, despite the presence of smaller *
+* internal domains. We depart from the cluster labelling site (smaller   *
+* index), and the initial contribution to the area is L+1. Then we   *
+* attempt to walk along the left, front, right or backward directions.   *
+* The incoming (backward) direction is only accepted if it's not         *
+* possible to go on the other directions. We choose the height of the    *
+* initial size as 10*L and update the height along the walk.         *
+* Percolating clusters are not taken into account since the walls are    *
+* disconnected in that case. The area is also updated along the walk     *
+* using  the following table (the column shows the precedent step):      *
+*                                                                        *
+*              up     right    down   left                               *
+*  up (0)       0      h+1      h+1     0                                *
+*  right (3)    0      h+1      -h      1                                *
+*  down (2)    -h      0        0      -h                                *
+*  left (1)    -h      1        0      h+1                               *
+*                                                                        *
+*                                                                        *
+*************************************************************************/
+int biasedwalk(int qual, int *lab)
+
+{
+int i=0,y;
+int area;
+int dir=0,old,ok,endpoint=1;
+int num_visited=0;
+long unsigned int *visited;
+visited = jmalloc(N*sizeof(int));
+
+/* At first, we should find the starting point for our walk around the hull.
+Some domains may cross the horizontal border, and the label site will not be
+the top-leftmost site, so we have to find it, starting from the bottom layer up: */
+if (qual<L) 
+   {
+    ok=0;
+    y = up[0];
+    while (!ok)
+          {
+           for (i=0; i<L; ++i)
+               if (lab[i+y]==lab[qual]) break;
+           if (i==L) ok=1;
+                    else {
+                          qual = y+i;
+                          y = up[y];
+                         }
+          }
+   }
+/* but perhaps the domain also crosses the vertical border, so we try to find an initial
+site more to the left (not necessarily the leftmost): */
+while (lab[qual]==lab[left[qual]]) qual = left[qual];
+
+y = 10*L; /* the factor 10 is arbitrary, but should be at least 2 */
+area = y + 1;
+
+/* First check whether the starting point has one or two branches going out. If there
+   are two branches connected by the starting point, the configuration shoulbe be:  11
+                                                                                    10
+   The walk will first go through the horizontal branch and, in order to go to the down
+   branch it should pass over the initial site, but we should not stop the walk there. 
+   To do this, we set endpoint=0. When the walk returns from the horizontal branch, we 
+   set it to 1, so the walk can stop the next time it visits the starting point. Notice
+   however that the horizontal branch may close the loop and join the down one without
+   passing through the starting point. For example:  111
+                                                     101
+                                                     111                              */
+if ((lab[right[qual]]==lab[qual]) && (lab[down[qual]]==lab[qual]) &&
+    (lab[down[right[qual]]]!=lab[qual]))
+   endpoint = 0;
+
+/* from the starting point, choose the direction to move, there are just 2 possibilities
+(from the way we choose it): */
+if (lab[right[qual]]==lab[qual]) 
+   {
+    dir = 3; 
+    i = right[qual];
+    visited[0] = up[qual];
+   }
+   else if (lab[down[qual]]==lab[qual]) 
+           {
+            dir = 2; 
+            i = down[qual]; 
+            --y;
+	    visited[0] = right[qual];
+           }
+num_visited = 1;
+
+/* start the walk around the cluster, clockwise: */
+old = dir;
+
+while ((i!=qual) || ((!endpoint)&&(dir!=0))) 
+/* while the walk doesn't return to the starting point, or if it returns, it can continue to the other branch */
+   {
+    if (i==qual) endpoint = 1; /* next time it returns, the walk is over */
+    ok = 0;
+    dir = (dir+1)%4;  /* from the incoming direction, try left first */
+    while (!ok) /* from the incoming direction: try right, in front, left and backwards */
+      {
+       switch (dir)
+	 {
+	  case 0: if (lab[up[i]]==lab[i]) {
+	                                   ok = 1; 
+					   i = up[i]; 
+					   area += delta(old,dir,y); 
+					   ++y; 
+	                                  }
+	          else {
+                        visited[num_visited]=up[i];
+		        ++num_visited;
+                       }
+		  break;
+	  case 1: if (lab[left[i]]==lab[i]) {
+	                                     ok = 1; 
+					     i = left[i];
+					     area += delta(old,dir,y); 
+	                                    }
+                  else {
+		        visited[num_visited]=left[i];
+		        ++num_visited;
+                       }
+		  break;
+	  case 2: if (lab[down[i]]==lab[i]) {
+                                             ok = 1; 
+					     i = down[i];
+					     area += delta(old,dir,y); 
+					     --y;
+	                                    }
+                  else {
+		        visited[num_visited]=down[i];
+		        ++num_visited;
+                       }
+		  break;
+	  case 3: if (lab[right[i]]==lab[i]) {
+                                              ok = 1;
+					      i = right[i];
+					      area += delta(old,dir,y); 
+	                                     }
+                  else {
+   	                visited[num_visited]=right[i];
+		        ++num_visited;
+                       }
+		  break;
+	 }
+       if (ok==0) dir = (dir + 3)%4;
+      }
+    old = dir;
+   }
+
+if (dir==1) area -= y;
+
+if (lab[right[i]]!=lab[i]) { /* add the surface sites around the first/last site */
+                            visited[num_visited]=right[i];
+		            ++num_visited;
+                           }
+if (lab[left[i]]!=lab[i]) {
+                           visited[num_visited]=left[i];
+		           ++num_visited;
+                          }
+if (lab[down[i]]!=lab[i]) {
+                           visited[num_visited]=down[i];
+		           ++num_visited;
+                          }
+if (lab[up[i]]!=lab[i]) {
+                         visited[num_visited]=up[i];
+	                 ++num_visited;
+                        }
+hull_perimeter = uniq(visited,num_visited);
+free(visited);
+
+return area;
+}
+
+
+int delta(int i, int j, int hh)
+{
+switch (i)
+   {
+    case 0: switch (j)
+              {
+	      case 0: return 0;
+	      case 1: return 0;
+	      case 2: return (hh + 1);
+	      case 3: return (hh + 1);
+	      }
+   case 1: switch (j)
+              {
+	      case 0: return (-hh);
+	      case 1: return (-hh);
+	      case 2: return 0;
+	      case 3: return 1;
+	      }
+   case 2: switch (j)
+              {
+	      case 0: return (-hh);
+	      case 1: return (-hh);
+	      case 2: return 0;
+	      case 3: return 0;
+	      }
+   case 3: switch (j)
+              {
+	      case 0: return 0;
+	      case 1: return 1;
+	      case 2: return (hh + 1);
+	      case 3: return (hh + 1);
+	      }
+   default: printf("Wrong situation!\n"); exit(0);
+   }
+ return 1;
+}
+
 /**************************************************************
  *               Check for duplicate file                  
  *************************************************************/
@@ -555,25 +843,30 @@ bool exists(const char *fname){
  *************************************************************/
 
 void openfiles(void) {
-  char output_file1[100];
-  char teste[100];
+  char teste[250];
+
+  sprintf(root_name,"DATAising-L%d",L);
   unsigned long identifier = seed;
 
-  snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-  while(exists(teste)==true) {
-    identifier++;
-    snprintf(teste,sizeof teste,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,identifier);
-  }
-
-  #if(DEBUG==1)
-    seed=1111111111;
-  #else
-    seed=identifier;
+  #if(DEBUG==0)
+    sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    while(exists(teste)==true) {
+      identifier+=2;
+      sprintf(teste,"%s_sd%ld_1.dsf",root_name,identifier);
+    }
   #endif
+  sprintf(teste,"%s_sd%ld",root_name,identifier);
+  seed=identifier;
 
-  sprintf(output_file1,"binarytrans-ALPHA%.1f-lg%d-DETA-%.5f-seed%ld.dsf",ALPHA,L,DETA,seed);
+  sprintf(output_file1,"%s_1.dsf",teste);
   fp1 = fopen(output_file1,"w");
+  fprintf(fp1,"# Ising Model 2D T=0 Quench Main Output\n");
+  fprintf(fp1,"# Seed: %ld\n",seed);
+  fprintf(fp1,"# Linear size: %d\n",L);
+  fprintf(fp1,"# Time Persistence Zealots Active Clusters Big1 Perc1 Big2 Perc2\n");
+  fprintf(fp1,"\n\n");
   fflush(fp1);
+
   return;
 
 }
