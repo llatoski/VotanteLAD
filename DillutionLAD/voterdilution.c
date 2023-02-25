@@ -251,10 +251,6 @@ void single_update(int _site) {
   //Opinion dynamics    
   int dir = FRANDOM*4;
   int neighbour = neigh[_site][dir];
-  while(spin[neighbour]==0){
-    dir = FRANDOM*4;
-    neighbour = neigh[_site][dir];
-  }
   if(spin[_site]==-spin[neighbour]) {
     int INTERFANTES=0;
     if(spin[up[_site]]==-spin[_site])INTERFANTES++;
@@ -518,7 +514,7 @@ void openfiles(void) {
   char output_file1[300];
   char teste[250];
   
-  sprintf(root_name,"voterdillution_lg%d_rho%.2f_mob%.2f",L,RHO,MOB);
+  sprintf(root_name,"datavoterdillution_lg%d_rho%.2f",L,RHO);
 
   unsigned long identifier = seed;
   #if(DEBUG==0)
